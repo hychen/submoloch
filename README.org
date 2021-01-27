@@ -1,0 +1,9 @@
+#+TITLE: SubMoloch
+
+The [[https://polkadot.network/][Polkadot]] version of [[https://github.com/MolochVentures/moloch][MolochaDAO]].
+
+* Testing
+To run off-chain test
+#+BEGIN_SRC
+cargo +nightly test
+#+END_SRC
