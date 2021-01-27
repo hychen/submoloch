@@ -3,7 +3,21 @@
 The [[https://polkadot.network/][Polkadot]] version of [[https://github.com/MolochVentures/moloch][MolochaDAO]].
 
 * Testing
-To run off-chain test
-#+BEGIN_SRC
-cargo +nightly test
+** To run off-chain test by typing the following:
+#+BEGIN_SRC shell
+make test
 #+END_SRC
+** To run a local development chain by typing the following:
+https://paritytech.github.io/canvas-ui/
+#+BEGIN_SRC shell
+make node
+#+END_SRC
+
+Open https://paritytech.github.io/canvas-ui/ and interact the contract.
+* Generating Documents
+Type the following:
+#+BEGIN_SRC shell
+make doc
+#+END_SRC
+
+then open ~target/docs/submoloch/indexhtml~
