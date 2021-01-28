@@ -4,21 +4,57 @@ use ink_lang as ink;
 
 #[ink::contract]
 mod submoloch {
+    use scale::{Encode, Decode};
+    use scale_info::{TypeInfo};
+    use ink_storage::traits::{PackedLayout, SpreadLayout};
+
+    /// Defines Member.
+    #[derive(PackedLayout, SpreadLayout, TypeInfo, Encode, Decode, Default, Clone, Eq, PartialEq, Debug)]
+    struct Member {
+      /// the key responsible for submitting proposals and voting - defaults to member address unless updated
+      delegate_key: AccountId,
+      /// the # of voting shares assigned to this member
+      shares: u128,
+      /// the loot amount available to this member (combined with shares on ragequit)
+      loot: u128,
+      /// always true once a member has been created
+      exists: bool,
+      // highest proposal index # on which the member voted YES
+      highest_index_yes_vote: u128,
+      // set to proposalIndex of a passing guild kick proposal for this member, prevents voting on and sponsoring proposals
+      jailed: u128
+    }
+
+    impl Member {
+      pub fn new(_delegate_key: AccountId) -> Self {
+        Self {
+          delegate_key: _delegate_key,
+          shares: 1,
+          loot: 0,
+          exists: true,
+          highest_index_yes_vote: 0,
+          jailed: 0
+        }
+      }
+    }
+
+    type Members = Vec<Member>;
 
     /// Defines the storage of your contract.
     /// Add new fields to the below struct in order
     /// to add new static storage fields to your contract.
     #[ink(storage)]
     pub struct Submoloch {
-        /// Stores a single `bool` value on the storage.
-        value: bool,
+        members: Members
     }
 
     impl Submoloch {
         /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
-        pub fn new(init_value: bool) -> Self {
-            Self { value: init_value }
+        pub fn new(summoner: AccountId) -> Self {
+            let mut members = Vec::new();
+            members.push(Member::new(summoner));
+            Self { members: members }
         }
 
         /// Constructor that initializes the `bool` value to `false`.
@@ -29,18 +65,10 @@ mod submoloch {
             Self::new(Default::default())
         }
 
-        /// A message that can be called on instantiated contracts.
-        /// This one flips the value of the stored `bool` from `true`
-        /// to `false` and vice versa.
-        #[ink(message)]
-        pub fn flip(&mut self) {
-            self.value = !self.value;
-        }
-
         /// Simply returns the current value of our `bool`.
         #[ink(message)]
         pub fn get(&self) -> bool {
-            self.value
+          false
         }
     }
 
@@ -55,17 +83,14 @@ mod submoloch {
         /// We test if the default constructor does its job.
         #[test]
         fn default_works() {
-            let submoloch = Submoloch::default();
-            assert_eq!(submoloch.get(), false);
-        }
+          let accounts =
+          ink_env::test::default_accounts::<ink_env::DefaultEnvironment>().expect("Cannot get accounts");
 
-        /// We test a simple use case of our contract.
-        #[test]
-        fn it_works() {
-            let mut submoloch = Submoloch::new(false);
-            assert_eq!(submoloch.get(), false);
-            submoloch.flip();
-            assert_eq!(submoloch.get(), true);
+          let mut submoloch = Submoloch::new(accounts.alice);
+          if let Some(m) =  submoloch.members.pop() {
+            print!(m.delegate_key);
+            assert_eq!(m.shares, 1);
+          };
         }
     }
 }
