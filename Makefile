@@ -11,7 +11,6 @@ dev:
 	canvas --dev --tmp
 
 .PHONY: doc
-run:
-	rm -r target/docs
-	cargo +nighlty doc --no-deps
+doc:
+	cargo +nightly doc --document-private-items
 
