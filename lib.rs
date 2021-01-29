@@ -9,6 +9,11 @@ mod submoloch {
     use ink_storage::traits::{PackedLayout, SpreadLayout};
     use scale::{Decode, Encode};
     use scale_info::TypeInfo;
+    use std::collections::{HashMap};
+
+    /* ----------------------------------------------------*
+     * Member                                              *
+     * ----------------------------------------------------*/
 
     /// Defines Member.
     #[derive(
@@ -26,7 +31,7 @@ mod submoloch {
         // highest proposal index # on which the member voted YES
         highest_index_yes_vote: u128,
         // set to proposalIndex of a passing guild kick proposal for this member, prevents voting on and sponsoring proposals
-        jailed: u128,
+        jailed: ProposalId,
     }
 
     impl Member {
@@ -43,6 +48,58 @@ mod submoloch {
     }
 
     type Members = Vec<Member>;
+
+    /* ----------------------------------------------------*
+     * Proposal                                            *
+     * ----------------------------------------------------*/
+
+    #[derive(
+        PackedLayout, SpreadLayout, TypeInfo, Encode, Decode, Eq, PartialEq, Debug,
+    )]
+    enum Vote {
+        Yes,
+        No
+    }
+
+    type ProposalId = u128;
+    type ProposalIndex = u128;
+    type Proposals = Vec<Proposal>;
+
+    /// Defines Proposal.
+    struct Proposal {
+        /// the applicant who wishes to become a member - this key will be used for withdrawals (doubles as guild kick target for gkick proposals)
+        applicant: AccountId,
+        /// the account that submitted the proposal (can be non-member)
+        proposer: AccountId,
+        /// the member that sponsored the proposal (moving it into the queue)
+        sponsor: AccountId,
+        /// the # of shares the applicant is requesting
+        share_requested: u128,
+        /// the amount of loot the applicant is requesting
+        loot_requested: u128,
+        /// amount of tokens offered as tribute
+        tributed_offered: u128,
+        /// tribute token contract reference
+        tributed_token: u128,
+        /// amount of tokens requested as payment
+        payment_requested: u128,
+        /// payment token contract reference
+        payment_token: u128,
+        /// the period in which voting can start for this proposal
+        starting_period: u128,
+        /// the total number of YES votes for this proposal
+        yes_votes: u128,
+        /// the total number of NO votes for this proposal
+        no_votes: u128,
+        /// [sponsored, processed, didPass, cancelled, whitelist, guildkick]
+        flags: [bool; 6],
+        /// proposal details - could be IPFS hash, plaintext, or JSON
+        details: String,
+        /// the maximum # of total shares encountered at a yes vote on this proposal
+        max_total_shares_and_loot_at_yes_vote: u128,
+        /// the votes on this proposal by each member
+        votes_by_member: HashMap<AccountId, Option<Vote>>,
+    }
 
     /* ----------------------------------------------------*
      * Event                                               *
@@ -75,7 +132,7 @@ mod submoloch {
         payment_token: u128,
         details: u128,
         flags: [bool; 6],
-        proposal_id: u128,
+        proposal_id: ProposalId,
         #[ink(topic)]
         delegate_key: AccountId,
         #[ink(topic)]
@@ -88,16 +145,16 @@ mod submoloch {
         delegate_key: AccountId,
         #[ink(topic)]
         member_address: AccountId,
-        proposal_id: u128,
-        proposal_index: u128,
+        proposal_id: ProposalId,
+        proposal_index: ProposalIndex,
         starting_period: u128,
     }
     /// Defines SubmitVote event.
     #[ink(event)]
     pub struct SubmitVote {
-        proposal_id: u128,
+        proposal_id: ProposalId,
         #[ink(topic)]
-        proposal_index: u128,
+        proposal_index: ProposalIndex,
         delegate_key: AccountId,
         #[ink(topic)]
         member_address: AccountId,
@@ -107,27 +164,27 @@ mod submoloch {
     #[ink(event)]
     pub struct ProcessProposal {
         #[ink(topic)]
-        proposal_index: u128,
+        proposal_index: ProposalIndex,
         #[ink(topic)]
-        proposal_id: u128,
+        proposal_id: ProposalId,
         did_pass: bool,
     }
     /// Defines ProcessWhitelistProposal event.
     #[ink(event)]
     pub struct ProcessWhitelistProposal {
         #[ink(topic)]
-        proposal_index: u128,
+        proposal_index: ProposalIndex,
         #[ink(topic)]
-        proposal_id: u128,
+        proposal_id: ProposalId,
         did_pass: bool,
     }
     /// Defines ProcessGuildKickProposal event.
     #[ink(event)]
     pub struct ProcessGuildKickProposal {
         #[ink(topic)]
-        proposal_index: u128,
+        proposal_index: ProposalIndex,
         #[ink(topic)]
-        proposal_id: u128,
+        proposal_id: ProposalId,
         did_pass: bool,
     }
     /// Defines Rageout event.
@@ -149,7 +206,7 @@ mod submoloch {
     #[ink(event)]
     pub struct CancelProposal {
         #[ink(topic)]
-        proposal_id: u128,
+        proposal_id: ProposalId,
         applicant_address: AccountId,
     }
     /// Defines UpdateDelegateKey event.
