@@ -1,7 +1,9 @@
+//! The port of Moloch contract from Ethereum.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use ink_lang as ink;
 
+/// Define ink! contract.
 #[ink::contract]
 mod submoloch {
     use scale::{Encode, Decode};
@@ -40,9 +42,131 @@ mod submoloch {
 
     type Members = Vec<Member>;
 
-    /// Defines the storage of your contract.
-    /// Add new fields to the below struct in order
-    /// to add new static storage fields to your contract.
+    /* ----------------------------------------------------*
+     * Event                                               *
+     * ----------------------------------------------------*/
+
+    /// Defines SummonComplete event.
+    #[ink(event)]
+    pub struct SummonComplete {
+      #[ink(topic)]
+      summoner: AccountId,
+      tokens: [AccountId],
+      summoning_time: Timestamp,
+      period_duration: u128,
+      voting_period_length: u128,
+      grace_period_length: u128,
+      proposal_deposit: u128,
+      dilution_bound: u128,
+      processing_reward: u128
+    }
+    /// Defines SubmitProposal event.
+    #[ink(event)]
+    pub struct SubmitProposal {
+      #[ink(topic)]
+      applicant: AccountId,
+      shares_requested: u128,
+      loot_requested: u128,
+      tribute_offered: u128,
+      tribute_token: u128,
+      payment_requested: u128,
+      payment_token: u128,
+      details: u128,
+      flags: [bool;6],
+      proposal_id: u128,
+      #[ink(topic)]
+      delegate_key: AccountId,
+      #[ink(topic)]
+      member_address: AccountId
+    }
+    /// Defines SponsorProposal event.
+    #[ink(event)]
+    pub struct SponsorProposal {
+      #[ink(topic)]
+      delegate_key: AccountId,
+      #[ink(topic)]
+      member_address: AccountId,
+      proposal_id: u128,
+      proposal_index: u128,
+      starting_period: u128
+    }
+    /// Defines SubmitVote event.
+    #[ink(event)]
+    pub struct SubmitVote {
+      proposal_id: u128,
+      #[ink(topic)]
+      proposal_index: u128,
+      delegate_key: AccountId,
+      #[ink(topic)]
+      member_address: AccountId,
+      uint_vote: u128
+    }
+    /// Defines ProcessProposal event.
+    #[ink(event)]
+    pub struct ProcessProposal {
+      #[ink(topic)]
+      proposal_index: u128,
+      #[ink(topic)]
+      proposal_id: u128,
+      did_pass: bool
+    }
+    /// Defines ProcessWhitelistProposal event.
+    #[ink(event)]
+    pub struct ProcessWhitelistProposal {
+      #[ink(topic)]
+      proposal_index: u128,
+      #[ink(topic)]
+      proposal_id: u128,
+      did_pass: bool
+    }
+    /// Defines ProcessGuildKickProposal event.
+    #[ink(event)]
+    pub struct ProcessGuildKickProposal {
+      #[ink(topic)]
+      proposal_index: u128,
+      #[ink(topic)]
+      proposal_id: u128,
+      did_pass: bool
+    }
+    /// Defines Rageout event.
+    #[ink(event)]
+    pub struct Ragequit {
+      #[ink(topic)]
+      member_address: AccountId,
+      shares_to_burn: u128,
+      loot_to_burn: u128
+    }
+    /// Defines TokenCollected event.
+    #[ink(event)]
+    pub struct TokensCollected {
+      #[ink(topic)]
+      token: AccountId,
+      amountToCollect:  u128
+    }
+    /// Defines CancelProposal event.
+    #[ink(event)]
+    pub struct CancelProposal {
+      #[ink(topic)]
+      proposal_id: u128,
+      applicant_address: AccountId
+    }
+    /// Defines UpdateDelegateKey event.
+    #[ink(event)]
+    pub struct UpdateDelegateKey {
+      #[ink(topic)]
+      member_address: AccountId,
+      new_delegate_key: AccountId
+    }
+    /// Defines Withdraw event.
+    #[ink(event)]
+    pub struct Withdraw {
+      #[ink(topic)]
+      member_address: AccountId,
+      token: AccountId,
+      amount: u128
+    }
+
+    /// Defines the storage of this contract.
     #[ink(storage)]
     pub struct Submoloch {
         members: Members
