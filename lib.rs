@@ -11,6 +11,22 @@ mod submoloch {
     use scale_info::TypeInfo;
     use std::collections::HashMap;
 
+    // HARD-CODED LIMITS
+    // These numbers are quite arbitrary; they are small enough to avoid overflows when doing calculations
+    // with periods or shares, yet big enough to not limit reasonable use cases.
+    /// maximum length of voting period
+    const MAX_VOTING_PERIOD_LENGTH:u128 = 10 ^ 18;
+    /// maximum length of grace period
+    const MAX_GRACE_PERIOD_LENGTH:u128 = 10 ^ 18;
+    /// maximum dilution bound
+    const MAX_DILUTION_BOUND:u128 = 10 ^ 18;
+    /// maximum number of shares that can be minted
+    const MAX_NUMBER_OF_SHARES_AND_LOOT:u128 = 10 ^ 18;
+    /// maximum number of whitelisted tokens
+    const MAX_TOKEN_WHITELIST_COUNT:u128 = 400;
+    /// maximum number of tokens with non-zero balance in guildbank
+    const MAX_TOKEN_GUILDBANK_COUNT:u128 = 200;
+
     /* ----------------------------------------------------*
      * Member                                              *
      * ----------------------------------------------------*/
@@ -64,6 +80,7 @@ mod submoloch {
     type Proposals = Vec<Proposal>;
 
     /// Defines Proposal.
+    #[derive(PackedLayout, SpreadLayout, Encode, Decode, TypeInfo, Debug)]
     struct Proposal {
         /// the applicant who wishes to become a member - this key will be used for withdrawals (doubles as guild kick target for gkick proposals)
         applicant: AccountId,
@@ -227,6 +244,13 @@ mod submoloch {
     #[ink(storage)]
     pub struct Submoloch {
         members: Members,
+        token_whitelist: ink_storage::collections::HashMap<AccountId, bool>,
+        approved_tokens: ink_storage::collections::Vec<AccountId>,
+        proposed_to_whitelist: ink_storage::collections::HashMap<AccountId, bool>,
+        proposed_to_kick: ink_storage::collections::HashMap<AccountId, bool>,
+        member_address_by_delegate_key: ink_storage::collections::HashMap<AccountId, AccountId>,
+        propsals: HashMap<ProposalId, Proposal>,
+        proposal_queue: Vec<ProposalIndex>
     }
 
     impl Submoloch {
