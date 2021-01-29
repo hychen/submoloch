@@ -53,7 +53,7 @@ mod submoloch {
     pub struct SummonComplete {
         #[ink(topic)]
         summoner: AccountId,
-        tokens: [AccountId],
+        tokens: Vec<AccountId>,
         summoning_time: Timestamp,
         period_duration: u128,
         voting_period_length: u128,
@@ -143,7 +143,7 @@ mod submoloch {
     pub struct TokensCollected {
         #[ink(topic)]
         token: AccountId,
-        amountToCollect: u128,
+        amount_to_collect: u128,
     }
     /// Defines CancelProposal event.
     #[ink(event)]
