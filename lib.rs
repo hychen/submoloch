@@ -49,7 +49,6 @@ mod submoloch {
     }
 
     impl Submoloch {
-        /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
         pub fn new(summoner: AccountId) -> Self {
             let mut members = Vec::new();
@@ -57,17 +56,95 @@ mod submoloch {
             Self { members: members }
         }
 
-        /// Constructor that initializes the `bool` value to `false`.
-        ///
-        /// Constructors can delegate to other constructors.
         #[ink(constructor)]
         pub fn default() -> Self {
             Self::new(Default::default())
         }
 
-        /// Simply returns the current value of our `bool`.
         #[ink(message)]
-        pub fn get(&self) -> bool {
+        pub fn submit_proposal(&self) -> bool {
+          false
+        }
+
+        #[ink(message)]
+        pub fn submit_whitelist_proposal(&self) -> bool {
+          false
+        }
+
+        #[ink(message)]
+        pub fn submit_guildkick_proposal(&self) -> bool {
+          false
+        }
+
+        #[ink(message)]
+        pub fn sponsor_proposal(&self) -> bool {
+          false
+        }
+
+        #[ink(message)]
+        pub fn has_voting_period_expired(&self) -> bool {
+          false
+        }
+
+        #[ink(message)]
+        pub fn submit_vote(&self) -> bool {
+          false
+        }
+
+        #[ink(message)]
+        pub fn process_proposal(&self) -> bool {
+          false
+        }
+
+        #[ink(message)]
+        pub fn process_whitelist_proposal(&self) -> bool {
+          false
+        }
+
+        #[ink(message)]
+        pub fn process_guildkick_proposal(&self) -> bool {
+          false
+        }
+
+        #[ink(message)]
+        pub fn can_ragequit(&self) -> bool {
+          false
+        }
+
+        #[ink(message)]
+        pub fn ragequit(&self) -> bool {
+          false
+        }
+
+        #[ink(message)]
+        pub fn ragekick(&self) -> bool {
+          false
+        }
+
+        /// To withdraw a single token balance.
+        #[ink(message)]
+        pub fn withdraw_balance(&self) -> bool {
+          false
+        }
+
+        /// To withdraw multiple token balances at once.
+        #[ink(message)]
+        pub fn withdraw_balances(&self) -> bool {
+          false
+        }
+
+        #[ink(message)]
+        pub fn collect_tokens(&self) -> bool {
+          false
+        }
+
+        #[ink(message)]
+        pub fn cancel_proposal(&self) -> bool {
+          false
+        }
+
+        #[ink(message)]
+        pub fn update_delegate_key(&self) -> bool {
           false
         }
     }
@@ -88,7 +165,6 @@ mod submoloch {
 
           let mut submoloch = Submoloch::new(accounts.alice);
           if let Some(m) =  submoloch.members.pop() {
-            print!(m.delegate_key);
             assert_eq!(m.shares, 1);
           };
         }
