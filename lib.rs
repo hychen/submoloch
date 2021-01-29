@@ -9,7 +9,7 @@ mod submoloch {
     use ink_storage::traits::{PackedLayout, SpreadLayout};
     use scale::{Decode, Encode};
     use scale_info::TypeInfo;
-    use std::collections::{HashMap};
+    use std::collections::HashMap;
 
     /* ----------------------------------------------------*
      * Member                                              *
@@ -53,12 +53,10 @@ mod submoloch {
      * Proposal                                            *
      * ----------------------------------------------------*/
 
-    #[derive(
-        PackedLayout, SpreadLayout, TypeInfo, Encode, Decode, Eq, PartialEq, Debug,
-    )]
+    #[derive(PackedLayout, SpreadLayout, TypeInfo, Encode, Decode, Eq, PartialEq, Debug)]
     enum Vote {
         Yes,
-        No
+        No,
     }
 
     type ProposalId = u128;
@@ -233,7 +231,16 @@ mod submoloch {
 
     impl Submoloch {
         #[ink(constructor)]
-        pub fn new(summoner: AccountId) -> Self {
+        pub fn new(
+            summoner: AccountId,
+            _approvedTokens: AccountId,
+            _periodDuration: u128,
+            _votingPeriodLength: u128,
+            _gracePeriodLength: u128,
+            _proposalDeposit: u128,
+            _dilutionBound: u128,
+            _processingReward: u128
+        ) -> Self {
             let mut members = Vec::new();
             members.push(Member::new(summoner));
             Self { members: members }
@@ -244,90 +251,120 @@ mod submoloch {
             Self::new(Default::default())
         }
 
+        /// Defines a RPC call to submit a proposal.
         #[ink(message)]
-        pub fn submit_proposal(&self) -> bool {
+        pub fn submit_proposal(
+            &self,
+            applicant: AccountId,
+            shares_requested: u128,
+            loot_requested: u128,
+            tribute_offered: u128,
+            tribute_token: AccountId,
+            payment_requested: u128,
+            payment_token: AccountId,
+            details: String,
+        ) -> ProposalId {
+            0
+        }
+
+        /// Defines a RPC call to submit a whitelist proposal.
+        #[ink(message)]
+        pub fn submit_whitelist_proposal(
+            &self,
+            token_to_whitelist: AccountId,
+            details: String,
+        ) -> ProposalId {
+            0
+        }
+
+        /// Defines a RPC call to submit a guildkick proposal.
+        #[ink(message)]
+        pub fn submit_guildkick_proposal(
+            &self,
+            member_to_kick: AccountId,
+            detail: String,
+        ) -> ProposalId {
+            0
+        }
+
+        /// Defines a RPC call to sponsor a proposal.
+        #[ink(message)]
+        pub fn sponsor_proposal(&self, proposal_id: ProposalId) -> bool {
             false
         }
 
+        /// Defines a RPC call to checking voting period.
         #[ink(message)]
-        pub fn submit_whitelist_proposal(&self) -> bool {
+        pub fn has_voting_period_expired(&self, starting_period: u128) -> bool {
             false
         }
 
+        /// Defines a RPC call to submit a vote.
         #[ink(message)]
-        pub fn submit_guildkick_proposal(&self) -> bool {
+        pub fn submit_vote(&self, proposal_index: ProposalIndex, uintVote: u8) -> bool {
             false
         }
 
+        /// Defines a RPC call to process proposal.
         #[ink(message)]
-        pub fn sponsor_proposal(&self) -> bool {
+        pub fn process_proposal(&self, proposal_index: ProposalIndex) -> bool {
             false
         }
 
+        /// Defines a RPC call to process whitelist proposal.
         #[ink(message)]
-        pub fn has_voting_period_expired(&self) -> bool {
+        pub fn process_whitelist_proposal(&self, proposal_index: ProposalIndex) -> bool {
             false
         }
 
+        /// Defines a RPC call to process guildkick proposal.
         #[ink(message)]
-        pub fn submit_vote(&self) -> bool {
+        pub fn process_guildkick_proposal(&self, proposal_index: ProposalIndex) -> bool {
             false
         }
 
-        #[ink(message)]
-        pub fn process_proposal(&self) -> bool {
-            false
-        }
-
-        #[ink(message)]
-        pub fn process_whitelist_proposal(&self) -> bool {
-            false
-        }
-
-        #[ink(message)]
-        pub fn process_guildkick_proposal(&self) -> bool {
-            false
-        }
-
+        /// Defines a RPC call to check if the member can ragequit.
         #[ink(message)]
         pub fn can_ragequit(&self) -> bool {
             false
         }
 
+        /// Defines a RPC call to ragekick.
         #[ink(message)]
-        pub fn ragequit(&self) -> bool {
+        pub fn ragequit(&self, shares_to_burn:u128, loot_to_Burn: u128) -> bool {
+            false
+        }
+
+        /// Defines a RPC call to ragekick.
+        #[ink(message)]
+        pub fn ragekick(&self, member_to_kick: AccountId) -> bool {
+            false
+        }
+
+        /// Defines a RPC call to withdraw a single token balance.
+        #[ink(message)]
+        pub fn withdraw_balance(&self, token: AccountId, amount: u128) -> bool {
+            false
+        }
+
+        /// Defines a RPC call to withdraw multiple token balances at once.
+        #[ink(message)]
+        pub fn withdraw_balances(&self, tokens: Vec<AccountId>, amounts: Vec<u128>) -> bool {
             false
         }
 
         #[ink(message)]
-        pub fn ragekick(&self) -> bool {
-            false
-        }
-
-        /// To withdraw a single token balance.
-        #[ink(message)]
-        pub fn withdraw_balance(&self) -> bool {
-            false
-        }
-
-        /// To withdraw multiple token balances at once.
-        #[ink(message)]
-        pub fn withdraw_balances(&self) -> bool {
+        pub fn collect_tokens(&self, token: AccountId) -> bool {
             false
         }
 
         #[ink(message)]
-        pub fn collect_tokens(&self) -> bool {
+        pub fn cancel_proposal(&self, proposal_id: ProposalId) -> bool {
             false
         }
 
         #[ink(message)]
-        pub fn cancel_proposal(&self) -> bool {
-            false
-        }
-
-        #[ink(message)]
-        pub fn update_delegate_key(&self) -> bool {
+        pub fn update_delegate_key(&self, new_delegate_key: AccountId) -> bool {
             false
         }
     }
