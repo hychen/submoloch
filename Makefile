@@ -1,6 +1,10 @@
 .PHONY: test
 test:
-	cargo +nightly test --release --all
+	cargo +nightly contract test --release --all
+
+.PHONY: check
+check:
+	cargo +nightly contract check
 
 .PHONY: build
 build:
