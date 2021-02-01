@@ -6,10 +6,8 @@ use ink_lang as ink;
 /// Define ink! contract.
 #[ink::contract]
 mod submoloch {
-    use ink_storage::traits::{PackedLayout, SpreadLayout};
-    use scale::{Decode, Encode};
-    use scale_info::TypeInfo;
-    use std::collections::HashMap;
+    use ink_prelude::string::String;
+    use ink_prelude::vec::Vec;
 
     // HARD-CODED LIMITS
     // These numbers are quite arbitrary; they are small enough to avoid overflows when doing calculations
@@ -33,7 +31,17 @@ mod submoloch {
 
     /// Defines Member.
     #[derive(
-        PackedLayout, SpreadLayout, TypeInfo, Encode, Decode, Default, Clone, Eq, PartialEq, Debug,
+        Debug,
+        PartialEq,
+        Eq,
+        scale::Encode,
+        scale::Decode,
+        ink_storage::traits::SpreadLayout,
+        ink_storage::traits::PackedLayout
+    )]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout)
     )]
     struct Member {
         /// the key responsible for submitting proposals and voting - defaults to member address unless updated
@@ -63,24 +71,49 @@ mod submoloch {
         }
     }
 
-    type Members = Vec<Member>;
+    type Members = ink_storage::collections::Vec<Member>;
 
     /* ----------------------------------------------------*
      * Proposal                                            *
      * ----------------------------------------------------*/
 
-    #[derive(PackedLayout, SpreadLayout, TypeInfo, Encode, Decode, Eq, PartialEq, Debug)]
+     #[derive(
+        Debug,
+        PartialEq,
+        Eq,
+        scale::Encode,
+        scale::Decode,
+        ink_storage::traits::SpreadLayout,
+        ink_storage::traits::PackedLayout
+    )]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout)
+    )]
     enum Vote {
+        None,
         Yes,
         No,
     }
 
     type ProposalId = u128;
     type ProposalIndex = u128;
-    type Proposals = Vec<Proposal>;
+    type Proposals = ink_storage::collections::Vec<Proposal>;
 
     /// Defines Proposal.
-    #[derive(PackedLayout, SpreadLayout, Encode, Decode, TypeInfo, Debug)]
+    #[derive(
+        Debug,
+        PartialEq,
+        Eq,
+        scale::Encode,
+        scale::Decode,
+        ink_storage::traits::SpreadLayout,
+        ink_storage::traits::PackedLayout
+    )]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout)
+    )]
     struct Proposal {
         /// the applicant who wishes to become a member - this key will be used for withdrawals (doubles as guild kick target for gkick proposals)
         applicant: AccountId,
@@ -113,7 +146,8 @@ mod submoloch {
         /// the maximum # of total shares encountered at a yes vote on this proposal
         max_total_shares_and_loot_at_yes_vote: u128,
         /// the votes on this proposal by each member
-        votes_by_member: HashMap<AccountId, Option<Vote>>,
+//        votes_by_member: ink_storage::collections::HashMap<AccountId, Balance>,
+        votes_by_member: u128
     }
 
     /* ----------------------------------------------------*
@@ -241,38 +275,52 @@ mod submoloch {
     }
 
     /// Defines the storage of this contract.
+    #[cfg(not(feature = "ink-as-dependency"))]
+    #[derive(Default)]
     #[ink(storage)]
     pub struct Submoloch {
         members: Members,
         token_whitelist: ink_storage::collections::HashMap<AccountId, bool>,
         approved_tokens: ink_storage::collections::Vec<AccountId>,
+        period_duration: u128,
+        voting_period_length: u128,
+        grace_period_length: u128,
+        proposal_deposit: u128,
+        dilution_bound: u128,
+        processing_reward: u128,
         proposed_to_whitelist: ink_storage::collections::HashMap<AccountId, bool>,
         proposed_to_kick: ink_storage::collections::HashMap<AccountId, bool>,
         member_address_by_delegate_key: ink_storage::collections::HashMap<AccountId, AccountId>,
-        propsals: HashMap<ProposalId, Proposal>,
-        proposal_queue: Vec<ProposalIndex>
+        propsals: ink_storage::collections::HashMap<ProposalId, Proposal>,
+        proposal_queue: ink_storage::collections::Vec<ProposalIndex>
     }
 
     impl Submoloch {
         #[ink(constructor)]
         pub fn new(
             summoner: AccountId,
-            _approvedTokens: AccountId,
-            _periodDuration: u128,
-            _votingPeriodLength: u128,
-            _gracePeriodLength: u128,
-            _proposalDeposit: u128,
-            _dilutionBound: u128,
-            _processingReward: u128
+            approved_tokens: Vec<AccountId>,
+            period_duration: u128,
+            voting_period_length: u128,
+            grace_period_length: u128,
+            proposal_deposit: u128,
+            dilution_bound: u128,
+            processing_reward: u128
         ) -> Self {
-            let mut members = Vec::new();
-            members.push(Member::new(summoner));
-            Self { members: members }
-        }
+            let mut instance = Self::default();
+            instance.members.push(Member::new(summoner));
 
-        #[ink(constructor)]
-        pub fn default() -> Self {
-            Self::new(Default::default())
+            for i in approved_tokens.iter() {
+                instance.approved_tokens.push(*i);
+            }
+
+            instance.period_duration = period_duration;
+            instance.voting_period_length = voting_period_length;
+            instance.grace_period_length = grace_period_length;
+            instance.proposal_deposit = proposal_deposit;
+            instance.dilution_bound = dilution_bound;
+            instance.processing_reward = processing_reward;
+            instance
         }
 
         /// Defines a RPC call to submit a proposal.
@@ -407,7 +455,16 @@ mod submoloch {
             let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>()
                 .expect("Cannot get accounts");
 
-            let mut submoloch = Submoloch::new(accounts.alice);
+            let mut submoloch = Submoloch::new(
+                accounts.alice,
+                Vec::<AccountId>::new(),
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            );
             if let Some(m) = submoloch.members.pop() {
                 assert_eq!(m.shares, 1);
             };
