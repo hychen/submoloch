@@ -13,17 +13,17 @@ mod submoloch {
     // These numbers are quite arbitrary; they are small enough to avoid overflows when doing calculations
     // with periods or shares, yet big enough to not limit reasonable use cases.
     /// maximum length of voting period
-    const MAX_VOTING_PERIOD_LENGTH:u128 = 10 ^ 18;
+    const MAX_VOTING_PERIOD_LENGTH: u128 = 10 ^ 18;
     /// maximum length of grace period
-    const MAX_GRACE_PERIOD_LENGTH:u128 = 10 ^ 18;
+    const MAX_GRACE_PERIOD_LENGTH: u128 = 10 ^ 18;
     /// maximum dilution bound
-    const MAX_DILUTION_BOUND:u128 = 10 ^ 18;
+    const MAX_DILUTION_BOUND: u128 = 10 ^ 18;
     /// maximum number of shares that can be minted
-    const MAX_NUMBER_OF_SHARES_AND_LOOT:u128 = 10 ^ 18;
+    const MAX_NUMBER_OF_SHARES_AND_LOOT: u128 = 10 ^ 18;
     /// maximum number of whitelisted tokens
-    const MAX_TOKEN_WHITELIST_COUNT:u128 = 400;
+    const MAX_TOKEN_WHITELIST_COUNT: u128 = 400;
     /// maximum number of tokens with non-zero balance in guildbank
-    const MAX_TOKEN_GUILDBANK_COUNT:u128 = 200;
+    const MAX_TOKEN_GUILDBANK_COUNT: u128 = 200;
 
     /* ----------------------------------------------------*
      * Member                                              *
@@ -37,7 +37,7 @@ mod submoloch {
         scale::Encode,
         scale::Decode,
         ink_storage::traits::SpreadLayout,
-        ink_storage::traits::PackedLayout
+        ink_storage::traits::PackedLayout,
     )]
     #[cfg_attr(
         feature = "std",
@@ -77,14 +77,14 @@ mod submoloch {
      * Proposal                                            *
      * ----------------------------------------------------*/
 
-     #[derive(
+    #[derive(
         Debug,
         PartialEq,
         Eq,
         scale::Encode,
         scale::Decode,
         ink_storage::traits::SpreadLayout,
-        ink_storage::traits::PackedLayout
+        ink_storage::traits::PackedLayout,
     )]
     #[cfg_attr(
         feature = "std",
@@ -108,7 +108,7 @@ mod submoloch {
         scale::Encode,
         scale::Decode,
         ink_storage::traits::SpreadLayout,
-        ink_storage::traits::PackedLayout
+        ink_storage::traits::PackedLayout,
     )]
     #[cfg_attr(
         feature = "std",
@@ -146,8 +146,8 @@ mod submoloch {
         /// the maximum # of total shares encountered at a yes vote on this proposal
         max_total_shares_and_loot_at_yes_vote: u128,
         /// the votes on this proposal by each member
-//        votes_by_member: ink_storage::collections::HashMap<AccountId, Balance>,
-        votes_by_member: u128
+        //        votes_by_member: ink_storage::collections::HashMap<AccountId, Balance>,
+        votes_by_member: u128,
     }
 
     /* ----------------------------------------------------*
@@ -292,7 +292,7 @@ mod submoloch {
         proposed_to_kick: ink_storage::collections::HashMap<AccountId, bool>,
         member_address_by_delegate_key: ink_storage::collections::HashMap<AccountId, AccountId>,
         propsals: ink_storage::collections::HashMap<ProposalId, Proposal>,
-        proposal_queue: ink_storage::collections::Vec<ProposalIndex>
+        proposal_queue: ink_storage::collections::Vec<ProposalIndex>,
     }
 
     impl Submoloch {
@@ -305,7 +305,7 @@ mod submoloch {
             grace_period_length: u128,
             proposal_deposit: u128,
             dilution_bound: u128,
-            processing_reward: u128
+            processing_reward: u128,
         ) -> Self {
             let mut instance = Self::default();
             instance.members.push(Member::new(summoner));
@@ -403,7 +403,7 @@ mod submoloch {
 
         /// Defines a RPC call to ragekick.
         #[ink(message)]
-        pub fn ragequit(&self, shares_to_burn:u128, loot_to_Burn: u128) -> bool {
+        pub fn ragequit(&self, shares_to_burn: u128, loot_to_Burn: u128) -> bool {
             false
         }
 
@@ -441,33 +441,540 @@ mod submoloch {
         }
     }
 
-    /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
-    /// module and test functions are marked with a `#[test]` attribute.
-    /// The below code is technically just normal Rust code.
     #[cfg(test)]
     mod tests {
-        /// Imports all the definitions from the outer scope so we can use them here.
         use super::*;
 
-        /// We test if the default constructor does its job.
-        #[test]
-        fn default_works() {
-            let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>()
-                .expect("Cannot get accounts");
+        mod test_constructor {
+            use super::*;
 
-            let mut submoloch = Submoloch::new(
-                accounts.alice,
-                Vec::<AccountId>::new(),
-                0,
-                0,
-                0,
-                0,
-                0,
-                0
-            );
-            if let Some(m) = submoloch.members.pop() {
-                assert_eq!(m.shares, 1);
-            };
+            #[test]
+            fn verify_deployment_parameters() {
+                let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>()
+                    .expect("Cannot get accounts");
+
+                let mut submoloch =
+                    Submoloch::new(accounts.alice, Vec::<AccountId>::new(), 0, 0, 0, 0, 0, 0);
+                if let Some(m) = submoloch.members.pop() {
+                    assert_eq!(m.shares, 1);
+                };
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_summoner_can_not_be_zero_address() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_period_duration_can_not_be_zero() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_voting_period_can_not_be_zero() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_voting_period_exceeds_limit() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_grace_period_exceeds_limit() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_dilution_bound_can_not_be_zero() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_dilution_bound_exceeds_limit() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_need_at_least_one_approved_token() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_too_many_tokens() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_deposit_cannot_be_smaller_than_processing_reward() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_approved_token_cannot_be_zero() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_duplicate_approved_token() {
+                assert!(false);
+            }
+        }
+
+        mod test_submit_proposal {
+            use super::*;
+
+            fn happy_case() {
+                assert!(false);
+            }
+
+            fn require_fail_insufficient_tribute_tokens() {
+                assert!(false);
+            }
+
+            fn require_fail_tribute_token_is_not_whitelisted() {
+                assert!(false);
+            }
+
+            fn require_fail_payment_token_is_not_whitelisted() {
+                assert!(false);
+            }
+
+            fn require_fail_applicant_can_not_be_zero() {
+                assert!(false);
+            }
+
+            fn require_fail_applicant_address_can_not_be_reserved() {
+                assert!(false);
+            }
+
+            fn failure_too_many_shares_requested() {
+                assert!(false);
+            }
+
+            fn failure_too_many_shares_just_loot_requested() {
+                assert!(false);
+            }
+
+            fn failure_too_many_shares_plus_loot_requested() {
+                assert!(false);
+            }
+
+            fn happy_case_second_submitted_proposal_returns_incremented_proposalId() {
+                assert!(false);
+            }
+        }
+
+        mod test_submit_whitelist_proposal {
+            use super::*;
+
+            #[test]
+            fn happy_case() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_applicant_can_not_be_zero() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_cannot_add_already_have_whitelisted_the_token() {
+                assert!(false);
+            }
+
+            #[test]
+            fn happy_case_second_submitted_proposal_returns_incremented_proposalId() {
+                assert!(false);
+            }
+        }
+
+        mod sponsor_proposal {
+
+            #[test]
+            fn happy_path_sponsor_add_token_to_whitelist() {
+                assert!(false);
+            }
+
+            #[test]
+            fn with_a_second_member_besides_the_summoner() {
+                assert!(false);
+            }
+
+            #[test]
+            fn happy_path_sponsor_proposal() {
+                assert!(false);
+            }
+
+            #[test]
+            fn failure_proposal_has_already_been_sponsored() {
+                assert!(false);
+            }
+
+            #[test]
+            fn failure_proposal_has_been_cancelled() {
+                assert!(false);
+            }
+
+            #[test]
+            fn failure_sponsor_whitelist_token_proposal_already_proposed() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_insufficient_deposit_token() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_sponsor_non_existant_proposal_fails() {
+                assert!(false);
+            }
+        }
+
+        mod whitelist_proposals_token_conflict {
+            use super::*;
+
+            #[test]
+            fn when_the_first_whitelist_proposal_passes_the_second_can_no_longer_be_sponsored() {
+                assert!(false);
+            }
+
+            #[test]
+            fn when_the_first_whitelist_proposal_fails_the_second_can_still_be_sponsored() {
+                assert!(false);
+            }
+        }
+
+        mod test_submit_vote {
+
+            #[test]
+            fn happy_case_yes_vote() {
+                assert!(false);
+            }
+
+            #[test]
+            fn happy_case_no_vote() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_proposal_does_not_exist() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_vote_must_be_less_than_3() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_voting_period_has_not_started() {
+                assert!(false);
+            }
+
+            #[test]
+            fn voting_period_boundary() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_member_has_already_voted() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_vote_must_be_yes_or_no() {
+                assert!(false);
+            }
+
+            #[test]
+            fn modifier_delegate() {
+                assert!(false);
+            }
+
+            #[test]
+            fn modifying_member_highestIndexYesVote() {
+                assert!(false);
+            }
+        }
+
+        mod process_proposal {
+            use super::*;
+
+            #[test]
+            fn happy_path_pass_yes_wins() {
+                assert!(false);
+            }
+
+            #[test]
+            fn happy_path_fail_no_wins_proposer_gets_funds_back() {
+                assert!(false);
+            }
+
+            #[test]
+            fn happy_path_shares_added_to_existing_member() {
+                assert!(false);
+            }
+
+            #[test]
+            fn happy_path_applicant_is_used_as_a_delegate_key_so_delegate_key_is_reset() {
+                assert!(false);
+            }
+
+            #[test]
+            fn happy_path_auto_fail_if_shares_exceed_limit() {
+                assert!(false);
+            }
+
+            #[test]
+            fn happy_path_auto_fail_if_loot_shares_exceed_limit() {
+                assert!(false);
+            }
+
+            #[test]
+            fn happy_path__token_whitelist() {
+                assert!(false);
+            }
+
+            #[test]
+            fn happy_path_guild_kick_member() {
+                assert!(false);
+            }
+
+            #[test]
+            fn edge_case_paymentRequested_more_than_funds_in_the_bank() {
+                assert!(false);
+            }
+
+            #[test]
+            fn edge_case_dilution_bound_is_exceeded() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_proposal_does_not_exist() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_proposal_is_not_ready_to_be_processed() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_proposal_has_already_been_processed() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_previous_proposal_must_be_processed() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_must_be_a_whitelist_proposal() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_must_be_a_guild_kick_proposal() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_must_be_a_standard_process_not_a_whitelist_proposal() {
+                assert!(false);
+            }
+
+            #[test]
+            fn require_fail_must_be_a_standard_process_not_a_guild_kick_proposal() {
+                assert!(false);
+            }
+        }
+
+        mod ragequit_plus_withdrawbalance {
+            use super::*;
+
+            #[test]
+            fn full_ragequit() {
+                assert!(false);
+            }
+
+            fn partial_shares() {
+                assert!(false);
+            }
+
+            fn require_fail()  {
+                assert!(false);
+            }
+
+            fn withdraw_balance() {
+                assert!(false);
+            }
+
+        }
+
+    }
+
+    mod cancel_proposal {
+
+        #[test]
+        fn happy_case() {
+            assert!(false);
+        }
+
+        #[test]
+        fn failure_already_sponsored() {
+            assert!(false);
+        }
+
+        #[test]
+        fn failure_already_cancelled() {
+            assert!(false);
+        }
+
+        #[test]
+        fn failure_solely_the_proposer_can_cancel() {
+            assert!(false);
+        }
+    }
+
+    mod update_delegate_key {
+
+        #[test]
+        fn happy_case() {
+            assert!(false);
+        }
+
+        #[test]
+        fn failure_can_not_be_zero_address() {
+            assert!(false);
+        }
+
+        #[test]
+        fn failure_cant_overwrite_existing_members() {
+            assert!(false);
+        }
+
+        #[test]
+        fn failure_cant_overwrite_existing_delegate_keys() {
+            assert!(false);
+        }
+    }
+
+    mod can_rage_quit {
+
+        #[test]
+        fn happy_case() {
+            assert!(false);
+        }
+
+        #[test]
+        fn failure_proposal_does_not_exist() {
+            assert!(false);
+        }
+
+        #[test]
+        fn ragekick() {
+            assert!(false);
+        }
+    }
+
+    mod ragekick {
+
+        #[test]
+        fn failure_member_must_be_in_jail() {
+            assert!(false);
+        }
+
+    }
+
+    mod ragekick_member_has_never_voted {
+
+        #[test]
+        fn ragekick_happy_case_can_ragekick_immediately_after_guild_kick() {
+            assert!(false);
+        }
+
+        #[test]
+        fn ragekick_failure_member_must_have_some_loot() {
+            assert!(false);
+        }
+    }
+
+    mod ragekick_member_voted_on_later_proposal {
+        #[test]
+        fn happy_case_can_ragekick_after_second_membership_proposal_is_processed() {
+            assert!(false);
+        }
+
+        #[test]
+        fn ragekick_boundary_condition_must_wait_for_highestIndexYesVote_propopsal_to_be_processed() {
+            assert!(false);
+        }
+    }
+
+    mod get_member_proposal_Vote {
+
+        fn happy_case() {
+
+        }
+
+        fn failure_member_does_not_exist() {
+
+        }
+
+        fn failure_proposal_does_not_exist() {
+
+        }
+    }
+
+    mod as_a_member_with_solely_loot_and_no_shares {
+
+        fn can_still_ragequit_justMember_modifier() {
+
+        }
+
+        fn can_still_partial_ragequit_justMember_modifier() {
+
+        }
+
+        fn unable_to_update_delegateKey_justShareholder_modifier() {
+
+        }
+
+        fn unable_to_use_delegate_key_to_sponsor_justShareholder_modifier() {
+
+        }
+
+        fn unable_to_use_delegate_key_to_vote_justDelegate_modifier() {
+
+        }
+
+        mod jail_effects {
+
+            fn cant_process_proposals_for_a_jailed_applicant() {
+
+            }
+
+            fn cant_sponsor_proposals_for_a_jailed_applicant() {
+
+            }
+
+            fn cant_sponsor_guild_kick_proposals_for_a_jailed_applicant() {
+
+            }
+
+            fn cant_submit_proposals_for_a_jailed_applicant() {
+
+            }
+
+            fn cant_submit_guild_kick_proposals_for_a_jailed_applicant() {
+
+            }
+
         }
     }
 }
