@@ -1,154 +1,17 @@
 //! The port of Moloch contract from Ethereum.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub mod member;
+pub mod proposal;
 use ink_lang as ink;
 
 /// Define ink! contract.
 #[ink::contract]
 mod submoloch {
+    use crate::member::{Member, Members};
+    use crate::proposal::{Proposal, ProposalId, ProposalIndex};
     use ink_prelude::string::String;
     use ink_prelude::vec::Vec;
-
-    // HARD-CODED LIMITS
-    // These numbers are quite arbitrary; they are small enough to avoid overflows when doing calculations
-    // with periods or shares, yet big enough to not limit reasonable use cases.
-    /// maximum length of voting period
-    const MAX_VOTING_PERIOD_LENGTH: u128 = 10 ^ 18;
-    /// maximum length of grace period
-    const MAX_GRACE_PERIOD_LENGTH: u128 = 10 ^ 18;
-    /// maximum dilution bound
-    const MAX_DILUTION_BOUND: u128 = 10 ^ 18;
-    /// maximum number of shares that can be minted
-    const MAX_NUMBER_OF_SHARES_AND_LOOT: u128 = 10 ^ 18;
-    /// maximum number of whitelisted tokens
-    const MAX_TOKEN_WHITELIST_COUNT: u128 = 400;
-    /// maximum number of tokens with non-zero balance in guildbank
-    const MAX_TOKEN_GUILDBANK_COUNT: u128 = 200;
-
-    /* ----------------------------------------------------*
-     * Member                                              *
-     * ----------------------------------------------------*/
-
-    /// Defines Member.
-    #[derive(
-        Debug,
-        PartialEq,
-        Eq,
-        scale::Encode,
-        scale::Decode,
-        ink_storage::traits::SpreadLayout,
-        ink_storage::traits::PackedLayout,
-    )]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout)
-    )]
-    struct Member {
-        /// the key responsible for submitting proposals and voting - defaults to member address unless updated
-        delegate_key: AccountId,
-        /// the # of voting shares assigned to this member
-        shares: u128,
-        /// the loot amount available to this member (combined with shares on ragequit)
-        loot: u128,
-        /// always true once a member has been created
-        exists: bool,
-        // highest proposal index # on which the member voted YES
-        highest_index_yes_vote: u128,
-        // set to proposalIndex of a passing guild kick proposal for this member, prevents voting on and sponsoring proposals
-        jailed: ProposalId,
-    }
-
-    impl Member {
-        pub fn new(_delegate_key: AccountId) -> Self {
-            Self {
-                delegate_key: _delegate_key,
-                shares: 1,
-                loot: 0,
-                exists: true,
-                highest_index_yes_vote: 0,
-                jailed: 0,
-            }
-        }
-    }
-
-    type Members = ink_storage::collections::Vec<Member>;
-
-    /* ----------------------------------------------------*
-     * Proposal                                            *
-     * ----------------------------------------------------*/
-
-    #[derive(
-        Debug,
-        PartialEq,
-        Eq,
-        scale::Encode,
-        scale::Decode,
-        ink_storage::traits::SpreadLayout,
-        ink_storage::traits::PackedLayout,
-    )]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout)
-    )]
-    enum Vote {
-        None,
-        Yes,
-        No,
-    }
-
-    type ProposalId = u128;
-    type ProposalIndex = u128;
-    type Proposals = ink_storage::collections::Vec<Proposal>;
-
-    /// Defines Proposal.
-    #[derive(
-        Debug,
-        PartialEq,
-        Eq,
-        scale::Encode,
-        scale::Decode,
-        ink_storage::traits::SpreadLayout,
-        ink_storage::traits::PackedLayout,
-    )]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout)
-    )]
-    struct Proposal {
-        /// the applicant who wishes to become a member - this key will be used for withdrawals (doubles as guild kick target for gkick proposals)
-        applicant: AccountId,
-        /// the account that submitted the proposal (can be non-member)
-        proposer: AccountId,
-        /// the member that sponsored the proposal (moving it into the queue)
-        sponsor: AccountId,
-        /// the # of shares the applicant is requesting
-        share_requested: u128,
-        /// the amount of loot the applicant is requesting
-        loot_requested: u128,
-        /// amount of tokens offered as tribute
-        tributed_offered: u128,
-        /// tribute token contract reference
-        tributed_token: u128,
-        /// amount of tokens requested as payment
-        payment_requested: u128,
-        /// payment token contract reference
-        payment_token: u128,
-        /// the period in which voting can start for this proposal
-        starting_period: u128,
-        /// the total number of YES votes for this proposal
-        yes_votes: u128,
-        /// the total number of NO votes for this proposal
-        no_votes: u128,
-        /// [sponsored, processed, didPass, cancelled, whitelist, guildkick]
-        flags: [bool; 6],
-        /// proposal details - could be IPFS hash, plaintext, or JSON
-        details: String,
-        /// the maximum # of total shares encountered at a yes vote on this proposal
-        max_total_shares_and_loot_at_yes_vote: u128,
-        /// the votes on this proposal by each member
-        //        votes_by_member: ink_storage::collections::HashMap<AccountId, Balance>,
-        votes_by_member: u128,
-    }
 
     /* ----------------------------------------------------*
      * Event                                               *
@@ -813,7 +676,7 @@ mod submoloch {
             }
 
             #[test]
-            fn require_fail()  {
+            fn require_fail() {
                 assert!(false);
             }
 
@@ -821,9 +684,7 @@ mod submoloch {
             fn withdraw_balance() {
                 assert!(false);
             }
-
         }
-
     }
 
     mod cancel_proposal {
@@ -896,7 +757,6 @@ mod submoloch {
         fn failure_member_must_be_in_jail() {
             assert!(false);
         }
-
     }
 
     mod ragekick_member_has_never_voted {
@@ -920,7 +780,8 @@ mod submoloch {
         }
 
         #[test]
-        fn ragekick_boundary_condition_must_wait_for_highestindexyesvote_propopsal_to_be_processed() {
+        fn ragekick_boundary_condition_must_wait_for_highestindexyesvote_propopsal_to_be_processed()
+        {
             assert!(false);
         }
     }
@@ -996,7 +857,6 @@ mod submoloch {
             fn cant_submit_guild_kick_proposals_for_a_jailed_applicant() {
                 assert!(false);
             }
-
         }
     }
 }
