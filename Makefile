@@ -1,6 +1,6 @@
 .PHONY: test
 test:
-	cargo +nightly contract test 
+	cargo +nightly test 
 
 .PHONY: check
 check:
