@@ -3,7 +3,13 @@
 
 pub mod member;
 pub mod proposal;
+pub mod config;
+pub mod constant;
+
 use ink_lang as ink;
+
+#[macro_use]
+extern crate derive_builder;
 
 /// Define ink! contract.
 #[ink::contract]
@@ -12,6 +18,7 @@ mod submoloch {
     use crate::proposal::{Proposal, ProposalId, ProposalIndex};
     use ink_prelude::string::String;
     use ink_prelude::vec::Vec;
+    use crate::config::{Config};
 
     /* ----------------------------------------------------*
      * Event                                               *
