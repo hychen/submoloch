@@ -373,7 +373,7 @@ mod submoloch {
 
         /// Defines a RPC call to submit a vote.
         #[ink(message)]
-        pub fn submit_vote(&self, proposal_index: ProposalIndex, uintVote: u8) -> bool {
+        pub fn submit_vote(&self, proposal_index: ProposalIndex, uintvote: u8) -> bool {
             false
         }
 
@@ -403,7 +403,7 @@ mod submoloch {
 
         /// Defines a RPC call to ragekick.
         #[ink(message)]
-        pub fn ragequit(&self, shares_to_burn: u128, loot_to_Burn: u128) -> bool {
+        pub fn ragequit(&self, shares_to_burn: u128, loot_to_burn: u128) -> bool {
             false
         }
 
@@ -523,51 +523,59 @@ mod submoloch {
         }
 
         mod test_submit_proposal {
-            use super::*;
 
+            #[test]
             fn happy_case() {
                 assert!(false);
             }
 
+            #[test]
             fn require_fail_insufficient_tribute_tokens() {
                 assert!(false);
             }
 
+            #[test]
             fn require_fail_tribute_token_is_not_whitelisted() {
                 assert!(false);
             }
 
+            #[test]
             fn require_fail_payment_token_is_not_whitelisted() {
                 assert!(false);
             }
 
+            #[test]
             fn require_fail_applicant_can_not_be_zero() {
                 assert!(false);
             }
 
+            #[test]
             fn require_fail_applicant_address_can_not_be_reserved() {
                 assert!(false);
             }
 
+            #[test]
             fn failure_too_many_shares_requested() {
                 assert!(false);
             }
 
+            #[test]
             fn failure_too_many_shares_just_loot_requested() {
                 assert!(false);
             }
 
+            #[test]
             fn failure_too_many_shares_plus_loot_requested() {
                 assert!(false);
             }
 
-            fn happy_case_second_submitted_proposal_returns_incremented_proposalId() {
+            #[test]
+            fn happy_case_second_submitted_proposal_returns_incremented_proposalid() {
                 assert!(false);
             }
         }
 
         mod test_submit_whitelist_proposal {
-            use super::*;
 
             #[test]
             fn happy_case() {
@@ -585,7 +593,7 @@ mod submoloch {
             }
 
             #[test]
-            fn happy_case_second_submitted_proposal_returns_incremented_proposalId() {
+            fn happy_case_second_submitted_proposal_returns_incremented_proposalid() {
                 assert!(false);
             }
         }
@@ -634,7 +642,6 @@ mod submoloch {
         }
 
         mod whitelist_proposals_token_conflict {
-            use super::*;
 
             #[test]
             fn when_the_first_whitelist_proposal_passes_the_second_can_no_longer_be_sponsored() {
@@ -695,13 +702,12 @@ mod submoloch {
             }
 
             #[test]
-            fn modifying_member_highestIndexYesVote() {
+            fn modifying_member_highestindexyesvote() {
                 assert!(false);
             }
         }
 
         mod process_proposal {
-            use super::*;
 
             #[test]
             fn happy_path_pass_yes_wins() {
@@ -734,7 +740,7 @@ mod submoloch {
             }
 
             #[test]
-            fn happy_path__token_whitelist() {
+            fn happy_path_token_whitelist() {
                 assert!(false);
             }
 
@@ -744,7 +750,7 @@ mod submoloch {
             }
 
             #[test]
-            fn edge_case_paymentRequested_more_than_funds_in_the_bank() {
+            fn edge_case_paymentrequested_more_than_funds_in_the_bank() {
                 assert!(false);
             }
 
@@ -795,21 +801,23 @@ mod submoloch {
         }
 
         mod ragequit_plus_withdrawbalance {
-            use super::*;
 
             #[test]
             fn full_ragequit() {
                 assert!(false);
             }
 
+            #[test]
             fn partial_shares() {
                 assert!(false);
             }
 
+            #[test]
             fn require_fail()  {
                 assert!(false);
             }
 
+            #[test]
             fn withdraw_balance() {
                 assert!(false);
             }
@@ -905,74 +913,88 @@ mod submoloch {
     }
 
     mod ragekick_member_voted_on_later_proposal {
+
         #[test]
         fn happy_case_can_ragekick_after_second_membership_proposal_is_processed() {
             assert!(false);
         }
 
         #[test]
-        fn ragekick_boundary_condition_must_wait_for_highestIndexYesVote_propopsal_to_be_processed() {
+        fn ragekick_boundary_condition_must_wait_for_highestindexyesvote_propopsal_to_be_processed() {
             assert!(false);
         }
     }
 
-    mod get_member_proposal_Vote {
+    mod get_member_proposal_vote {
 
+        #[test]
         fn happy_case() {
-
+            assert!(false);
         }
 
+        #[test]
         fn failure_member_does_not_exist() {
-
+            assert!(false);
         }
 
+        #[test]
         fn failure_proposal_does_not_exist() {
-
+            assert!(false);
         }
     }
 
     mod as_a_member_with_solely_loot_and_no_shares {
 
-        fn can_still_ragequit_justMember_modifier() {
-
+        #[test]
+        fn can_still_ragequit_justmember_modifier() {
+            assert!(false);
         }
 
-        fn can_still_partial_ragequit_justMember_modifier() {
-
+        #[test]
+        fn can_still_partial_ragequit_justmember_modifier() {
+            assert!(false);
         }
 
-        fn unable_to_update_delegateKey_justShareholder_modifier() {
-
+        #[test]
+        fn unable_to_update_delegatekey_justshareholder_modifier() {
+            assert!(false);
         }
 
-        fn unable_to_use_delegate_key_to_sponsor_justShareholder_modifier() {
-
+        #[test]
+        fn unable_to_use_delegate_key_to_sponsor_justshareholder_modifier() {
+            assert!(false);
         }
 
-        fn unable_to_use_delegate_key_to_vote_justDelegate_modifier() {
-
+        #[test]
+        fn unable_to_use_delegate_key_to_vote_justdelegate_modifier() {
+            assert!(false);
         }
 
         mod jail_effects {
 
+            #[test]
             fn cant_process_proposals_for_a_jailed_applicant() {
-
+                assert!(false);
             }
 
+            #[test]
             fn cant_sponsor_proposals_for_a_jailed_applicant() {
-
+                assert!(false);
             }
 
+            #[test]
             fn cant_sponsor_guild_kick_proposals_for_a_jailed_applicant() {
-
+                assert!(false);
             }
 
+            #[test]
             fn cant_submit_proposals_for_a_jailed_applicant() {
-
+                assert!(false);
             }
 
+            #[test]
             fn cant_submit_guild_kick_proposals_for_a_jailed_applicant() {
-
+                assert!(false);
             }
 
         }
