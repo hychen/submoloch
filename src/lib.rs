@@ -6,6 +6,7 @@ pub mod member;
 pub mod proposal;
 pub mod config;
 pub mod constant;
+pub mod token;
 
 use ink_lang as ink;
 

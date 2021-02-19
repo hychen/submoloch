@@ -1,12 +1,13 @@
 //! configuration system.
 //! The main entrypoint of the `config` module is the `Config` struct.
-use crate::constant;
 use ink_prelude::vec::Vec;
 use ink_prelude::string::String;
 
+use crate::constant;
+use crate::token::{TokenId};
+
 type Second = u16;
 type Period = u128;
-type TokenId = u32;
 
 #[derive(Builder, Debug, PartialEq)]
 #[builder(no_std, build_fn(validate = "Self::validate"))]
