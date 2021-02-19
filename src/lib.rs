@@ -1,11 +1,12 @@
 //! The port of Moloch contract from Ethereum.
 #![cfg_attr(not(feature = "std"), no_std)]
-#![feature(alloc)] extern crate alloc;
+#![feature(alloc)]
+extern crate alloc;
 
-pub mod member;
-pub mod proposal;
 pub mod config;
 pub mod constant;
+pub mod member;
+pub mod proposal;
 pub mod token;
 
 use ink_lang as ink;
@@ -16,11 +17,11 @@ extern crate derive_builder;
 /// Define ink! contract.
 #[ink::contract]
 mod submoloch {
+    use crate::config::ConfigBuilder;
     use crate::member::{Member, Members};
     use crate::proposal::{Proposal, ProposalId, ProposalIndex};
     use ink_prelude::string::String;
     use ink_prelude::vec::Vec;
-    use crate::config::{Config};
 
     /* ----------------------------------------------------*
      * Event                                               *
@@ -152,9 +153,9 @@ mod submoloch {
     #[ink(storage)]
     pub struct Submoloch {
         members: Members,
-        token_whitelist: ink_storage::collections::HashMap<AccountId, bool>,
-        approved_tokens: ink_storage::collections::Vec<AccountId>,
-        period_duration: u128,
+        token_whitelist: ink_storage::collections::HashMap<u32, bool>,
+        approved_tokens: ink_storage::collections::Vec<u32>,
+        period_duration: u16,
         voting_period_length: u128,
         grace_period_length: u128,
         proposal_deposit: u128,
@@ -163,35 +164,72 @@ mod submoloch {
         proposed_to_whitelist: ink_storage::collections::HashMap<AccountId, bool>,
         proposed_to_kick: ink_storage::collections::HashMap<AccountId, bool>,
         member_address_by_delegate_key: ink_storage::collections::HashMap<AccountId, AccountId>,
-        propsals: ink_storage::collections::HashMap<ProposalId, Proposal>,
+        proposals: ink_storage::collections::HashMap<ProposalId, Proposal>,
         proposal_queue: ink_storage::collections::Vec<ProposalIndex>,
+        /// total proposals submitted
+        proposal_count: u128,
+        /// total shares across all members
+        total_shares: u128,
+        /// total loot across all members
+        total_loot: u128,
+        /// total tokens with non-zero balance in guild bank
+        total_guild_bank_tokens: u128,
     }
 
     impl Submoloch {
         #[ink(constructor)]
         pub fn new(
             summoner: AccountId,
-            approved_tokens: Vec<AccountId>,
-            period_duration: u128,
-            voting_period_length: u128,
-            grace_period_length: u128,
-            proposal_deposit: u128,
-            dilution_bound: u128,
-            processing_reward: u128,
+            approved_tokens: Vec<u32>,
+            period_duration: Option<u16>,
+            voting_period_length: Option<u128>,
+            grace_period_length: Option<u128>,
+            proposal_deposit: Option<u128>,
+            dilution_bound: Option<u128>,
+            processing_reward: Option<u128>,
         ) -> Self {
             let mut instance = Self::default();
-            instance.members.push(Member::new(summoner));
+            let mut builder = ConfigBuilder::default();
+            builder.approved_tokens(approved_tokens);
+            if period_duration.is_some() {
+                builder.period_duration(period_duration.unwrap());
+            }
+            if voting_period_length.is_some() {
+                builder.voting_period_length(voting_period_length.unwrap());
+            }
+            if grace_period_length.is_some() {
+                builder.grace_period_length(grace_period_length.unwrap());
+            }
+            if proposal_deposit.is_some() {
+                builder.proposal_deposit(proposal_deposit.unwrap());
+            }
+            if dilution_bound.is_some() {
+                builder.dilution_bound(dilution_bound.unwrap());
+            }
+            if processing_reward.is_some() {
+                builder.processing_reward(processing_reward.unwrap());
+            }
 
-            for i in approved_tokens.iter() {
+            let config = builder.build().unwrap();
+
+            for i in config.approved_tokens.iter() {
+                instance.token_whitelist.insert(*i, true);
                 instance.approved_tokens.push(*i);
             }
 
-            instance.period_duration = period_duration;
-            instance.voting_period_length = voting_period_length;
-            instance.grace_period_length = grace_period_length;
-            instance.proposal_deposit = proposal_deposit;
-            instance.dilution_bound = dilution_bound;
-            instance.processing_reward = processing_reward;
+            instance.period_duration = config.period_duration;
+            instance.voting_period_length = config.voting_period_length;
+            instance.grace_period_length = config.grace_period_length;
+            instance.proposal_deposit = config.proposal_deposit;
+            instance.dilution_bound = config.dilution_bound;
+            instance.processing_reward = config.processing_reward;
+
+            let first_member = Member::new(summoner);
+            instance.total_shares = first_member.shares;
+            instance.members.insert(summoner, first_member);
+            instance
+                .member_address_by_delegate_key
+                .insert(summoner, summoner);
             instance
         }
 
@@ -324,13 +362,43 @@ mod submoloch {
             fn verify_deployment_parameters() {
                 let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>()
                     .expect("Cannot get accounts");
+                let submoloch =
+                    Submoloch::new(accounts.alice, vec![1], None, None, None, None, None, None);
 
-                let mut submoloch =
-                    Submoloch::new(accounts.alice, Vec::<AccountId>::new(), 0, 0, 0, 0, 0, 0);
-                if let Some(m) = submoloch.members.pop() {
-                    assert_eq!(m.shares, 1);
-                };
-                assert!(false);
+                // check configs.
+                assert_eq!(submoloch.period_duration, 17280);
+                assert_eq!(submoloch.voting_period_length, 35);
+                assert_eq!(submoloch.grace_period_length, 35);
+                assert_eq!(submoloch.proposal_deposit, 10);
+                assert_eq!(submoloch.dilution_bound, 3);
+                assert_eq!(submoloch.processing_reward, 1);
+
+                // check delegate key matchs.
+                let summoner = submoloch.members.get(&accounts.alice).unwrap();
+                assert_eq!(summoner.delegate_key, accounts.alice);
+                assert_eq!(summoner.shares, 1);
+                assert_eq!(summoner.exists, true);
+                assert_eq!(summoner.highest_index_yes_vote, 0);
+
+                assert_eq!(
+                    *submoloch
+                        .member_address_by_delegate_key
+                        .get(&accounts.alice)
+                        .unwrap(),
+                    accounts.alice
+                );
+
+                // check initial states.
+                assert_eq!(submoloch.proposal_count, 0);
+                assert_eq!(submoloch.total_shares, summoner.shares);
+                assert_eq!(submoloch.total_loot, 0);
+                assert_eq!(submoloch.total_guild_bank_tokens, 0);
+
+                // XXX: confirm initial deposit token supply and summoner balance
+
+                // XXX: check all tokens passed in construction are approved
+
+                // XXX: first token should be the deposit token
             }
 
             #[test]

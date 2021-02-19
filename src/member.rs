@@ -43,4 +43,4 @@ impl Member {
     }
 }
 
-pub type Members = ink_storage::collections::Vec<Member>;
+pub type Members = ink_storage::collections::HashMap<AccountId, Member>;
