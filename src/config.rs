@@ -2,13 +2,14 @@
 //! The main entrypoint of the `config` module is the `Config` struct.
 use crate::constant;
 use ink_prelude::vec::Vec;
+use ink_prelude::string::String;
 
 type Second = u16;
 type Period = u128;
 type TokenId = u32;
 
 #[derive(Builder, Debug, PartialEq)]
-#[builder(build_fn(validate = "Self::validate"))]
+#[builder(no_std, build_fn(validate = "Self::validate"))]
 pub struct Config {
     #[builder(default)]
     pub approved_tokens: Vec<TokenId>,
@@ -45,8 +46,8 @@ impl ConfigBuilder {
     fn validate_approved_tokens(&self) -> Result<(), String> {
         if let Some(approved_tokens) = &self.approved_tokens {
             match approved_tokens.len() as u128 {
-                0 => Err("need at least one approved token".to_string()),
-                n if n > constant::MAX_TOKEN_WHITELIST_COUNT => Err("Too many tokens".to_string()),
+                0 => Err(String::from("need at least one approved token")),
+                n if n > constant::MAX_TOKEN_WHITELIST_COUNT => Err(String::from("Too many tokens")),
                 _ => Ok(()),
             }
         } else {
@@ -56,16 +57,16 @@ impl ConfigBuilder {
 
     fn validate_period_duration(&self) -> Result<(), String> {
         match self.period_duration {
-            Some(0) => Err("period_duration can not be zero".to_string()),
+            Some(0) => Err(String::from("period_duration can not be zero")),
             _ => Ok(()),
         }
     }
 
     fn validate_voting_period_length(&self) -> Result<(), String> {
         match self.voting_period_length {
-            Some(0) => Err("voting_period_length can not be zero".to_string()),
+            Some(0) => Err(String::from("voting_period_length can not be zero")),
             Some(n) if n > constant::MAX_VOTING_PERIOD_LENGTH => {
-                Err("voting_period_length exceeds limit".to_string())
+                Err(String::from("voting_period_length exceeds limit"))
             }
             _ => Ok(()),
         }
@@ -73,9 +74,9 @@ impl ConfigBuilder {
 
     fn validate_grace_period_length(&self) -> Result<(), String> {
         match self.grace_period_length {
-            Some(0) => Err("grace_period_length can not be zero".to_string()),
+            Some(0) => Err(String::from("grace_period_length can not be zero")),
             Some(n) if n > constant::MAX_GRACE_PERIOD_LENGTH => {
-                Err("grace_period_length exceeds limit".to_string())
+                Err(String::from("grace_period_length exceeds limit"))
             }
             _ => Ok(()),
         }
@@ -84,7 +85,7 @@ impl ConfigBuilder {
     fn validate_proposal_deposit(&self) -> Result<(), String> {
         match (self.proposal_deposit, self.processing_reward) {
             (Some(a), Some(b)) if a <= b => {
-                Err("proposal_deposit cannot be smaller than processing_reward".to_string())
+                Err(String::from("proposal_deposit cannot be smaller than processing_reward"))
             }
             _ => Ok(()),
         }
@@ -92,9 +93,9 @@ impl ConfigBuilder {
 
     fn validate_dilution_bound(&self) -> Result<(), String> {
         match self.dilution_bound {
-            Some(0) => Err("dilution_bound cannot be 0".to_string()),
+            Some(0) => Err(String::from("dilution_bound cannot be 0")),
             Some(n) if n > constant::MAX_DILUTION_BOUND => {
-                Err("dilution bound exceeds limit".to_string())
+                Err(String::from("dilution bound exceeds limit"))
             }
             _ => Ok(()),
         }

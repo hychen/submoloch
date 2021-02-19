@@ -1,5 +1,6 @@
 //! The port of Moloch contract from Ethereum.
 #![cfg_attr(not(feature = "std"), no_std)]
+#![feature(alloc)] extern crate alloc;
 
 pub mod member;
 pub mod proposal;
