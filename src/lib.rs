@@ -198,117 +198,117 @@ mod submoloch {
         #[ink(message)]
         pub fn submit_proposal(
             &self,
-            applicant: AccountId,
-            shares_requested: u128,
-            loot_requested: u128,
-            tribute_offered: u128,
-            tribute_token: AccountId,
-            payment_requested: u128,
-            payment_token: AccountId,
-            details: String,
+            _applicant: AccountId,
+            _shares_requested: u128,
+            _loot_requested: u128,
+            _tribute_offered: u128,
+            _tribute_token: AccountId,
+            _payment_requested: u128,
+            _payment_token: AccountId,
+            _details: String,
         ) -> ProposalId {
-            0
+            unimplemented!()
         }
 
         /// Defines a RPC call to submit a whitelist proposal.
         #[ink(message)]
         pub fn submit_whitelist_proposal(
             &self,
-            token_to_whitelist: AccountId,
-            details: String,
+            _token_to_whitelist: AccountId,
+            _details: String,
         ) -> ProposalId {
-            0
+            unimplemented!()
         }
 
         /// Defines a RPC call to submit a guildkick proposal.
         #[ink(message)]
         pub fn submit_guildkick_proposal(
             &self,
-            member_to_kick: AccountId,
-            detail: String,
+            _member_to_kick: AccountId,
+            _detail: String,
         ) -> ProposalId {
-            0
+            unimplemented!()
         }
 
         /// Defines a RPC call to sponsor a proposal.
         #[ink(message)]
-        pub fn sponsor_proposal(&self, proposal_id: ProposalId) -> bool {
-            false
+        pub fn sponsor_proposal(&self, _proposal_id: ProposalId) -> bool {
+            unimplemented!()
         }
 
         /// Defines a RPC call to checking voting period.
         #[ink(message)]
-        pub fn has_voting_period_expired(&self, starting_period: u128) -> bool {
-            false
+        pub fn has_voting_period_expired(&self, _starting_period: u128) -> bool {
+            unimplemented!()
         }
 
         /// Defines a RPC call to submit a vote.
         #[ink(message)]
-        pub fn submit_vote(&self, proposal_index: ProposalIndex, uintvote: u8) -> bool {
-            false
+        pub fn submit_vote(&self, _proposal_index: ProposalIndex, _uintvote: u8) -> bool {
+            unimplemented!()
         }
 
         /// Defines a RPC call to process proposal.
         #[ink(message)]
-        pub fn process_proposal(&self, proposal_index: ProposalIndex) -> bool {
-            false
+        pub fn process_proposal(&self, _proposal_index: ProposalIndex) -> bool {
+            unimplemented!()
         }
 
         /// Defines a RPC call to process whitelist proposal.
         #[ink(message)]
-        pub fn process_whitelist_proposal(&self, proposal_index: ProposalIndex) -> bool {
-            false
+        pub fn process_whitelist_proposal(&self, _proposal_index: ProposalIndex) -> bool {
+            unimplemented!()
         }
 
         /// Defines a RPC call to process guildkick proposal.
         #[ink(message)]
-        pub fn process_guildkick_proposal(&self, proposal_index: ProposalIndex) -> bool {
-            false
+        pub fn process_guildkick_proposal(&self, _proposal_index: ProposalIndex) -> bool {
+            unimplemented!()
         }
 
         /// Defines a RPC call to check if the member can ragequit.
         #[ink(message)]
         pub fn can_ragequit(&self) -> bool {
-            false
+            unimplemented!()
         }
 
         /// Defines a RPC call to ragekick.
         #[ink(message)]
-        pub fn ragequit(&self, shares_to_burn: u128, loot_to_burn: u128) -> bool {
-            false
+        pub fn ragequit(&self, _shares_to_burn: u128, _loot_to_burn: u128) -> bool {
+            unimplemented!()
         }
 
         /// Defines a RPC call to ragekick.
         #[ink(message)]
-        pub fn ragekick(&self, member_to_kick: AccountId) -> bool {
-            false
+        pub fn ragekick(&self, _member_to_kick: AccountId) -> bool {
+            unimplemented!()
         }
 
         /// Defines a RPC call to withdraw a single token balance.
         #[ink(message)]
-        pub fn withdraw_balance(&self, token: AccountId, amount: u128) -> bool {
-            false
+        pub fn withdraw_balance(&self, _token: AccountId, _amount: u128) -> bool {
+            unimplemented!()
         }
 
         /// Defines a RPC call to withdraw multiple token balances at once.
         #[ink(message)]
-        pub fn withdraw_balances(&self, tokens: Vec<AccountId>, amounts: Vec<u128>) -> bool {
-            false
+        pub fn withdraw_balances(&self, _tokens: Vec<AccountId>, _amounts: Vec<u128>) -> bool {
+            unimplemented!()
         }
 
         #[ink(message)]
-        pub fn collect_tokens(&self, token: AccountId) -> bool {
-            false
+        pub fn collect_tokens(&self, _token: AccountId) -> bool {
+            unimplemented!()
         }
 
         #[ink(message)]
-        pub fn cancel_proposal(&self, proposal_id: ProposalId) -> bool {
-            false
+        pub fn cancel_proposal(&self, _proposal_id: ProposalId) -> bool {
+            unimplemented!()
         }
 
         #[ink(message)]
-        pub fn update_delegate_key(&self, new_delegate_key: AccountId) -> bool {
-            false
+        pub fn update_delegate_key(&self, _new_delegate_key: AccountId) -> bool {
+            unimplemented!()
         }
     }
 
