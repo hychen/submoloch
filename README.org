@@ -1,6 +1,6 @@
 #+TITLE: SubMoloch
 
-The [[https://polkadot.network/][Polkadot]] version of [[https://github.com/MolochVentures/moloch][MolochaDAO]].
+The [[https://polkadot.network/][Polkadot]] version of [[https://github.com/MolochVentures/moloch][MolochaDAO]]. Developed for learning ink! purpose.
 
 * Installation
 - Prerequisites
