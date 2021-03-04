@@ -3,6 +3,8 @@ use crate::proposal::{ProposalId};
 
 /// Defines Member.
 #[derive(
+    Clone,
+    Copy,
     Debug,
     PartialEq,
     Eq,

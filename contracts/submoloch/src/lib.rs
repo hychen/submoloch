@@ -233,6 +233,61 @@ mod submoloch {
             instance
         }
 
+        #[ink(message)]
+        pub fn members(&self, account_id: AccountId) -> Option<Member> {
+            self.members.get(&account_id).copied()
+        }
+
+        #[ink(message)]
+        pub fn approved_tokens(&self, index: u32) -> u32 {
+            self.approved_tokens[index]
+        }
+
+        #[ink(message)]
+        pub fn period_duration(&self) -> u16 {
+            self.period_duration
+        }
+
+        #[ink(message)]
+        pub fn voting_period_length(&self) -> u128 {
+            self.voting_period_length
+        }
+
+        #[ink(message)]
+        pub fn grace_period_length(&self) -> u128 {
+            self.grace_period_length
+        }
+
+        #[ink(message)]
+        pub fn proposal_deposit(&self) -> u128 {
+            self.proposal_deposit
+        }
+
+        #[ink(message)]
+        pub fn dilution_bound(&self) -> u128 {
+            self.dilution_bound
+        }
+
+        #[ink(message)]
+        pub fn proposal_count(&self) -> u128 {
+            self.proposal_count
+        }
+
+        #[ink(message)]
+        pub fn total_shares(&self) -> u128 {
+            self.total_shares
+        }
+
+        #[ink(message)]
+        pub fn total_loot(&self) -> u128 {
+            self.total_loot
+        }
+
+        #[ink(message)]
+        pub fn processing_reward(&self) -> u128 {
+            self.processing_reward
+        }
+
         /// Defines a RPC call to submit a proposal.
         #[ink(message)]
         pub fn submit_proposal(
