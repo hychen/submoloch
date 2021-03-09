@@ -1,6 +1,7 @@
 # SubMoloch
 
-The [Polkadot](https://polkadot.network/) version of [MolochDao]([https://github.com/MolochVentures/moloch). Developed for learning purpose, please use it at your own risk.
+The [Polkadot](https://polkadot.network/) version of [MolochDao]([https://github.com/MolochVentures/moloch). 
+Developed for the purpose of learning, please use it at your own risk
 
 ## Setup
 
