@@ -1,5 +1,6 @@
 //! configuration system.
 //! The main entrypoint of the `config` module is the `Config` struct.
+use ink_env::AccountId;
 use ink_prelude::vec::Vec;
 use ink_prelude::string::String;
 
@@ -13,7 +14,7 @@ type Period = u128;
 #[builder(no_std, build_fn(validate = "Self::validate"))]
 pub struct Config {
     #[builder(default)]
-    pub approved_tokens: Vec<TokenId>,
+    pub approved_tokens: Vec<AccountId>,
     /// default = 17280 = 4.8 hours in seconds (5 periods per day)
     #[builder(default = "17280")]
     pub period_duration: Second,

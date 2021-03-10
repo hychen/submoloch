@@ -153,8 +153,8 @@ mod submoloch {
     #[ink(storage)]
     pub struct Submoloch {
         members: Members,
-        token_whitelist: ink_storage::collections::HashMap<u32, bool>,
-        approved_tokens: ink_storage::collections::Vec<u32>,
+        token_whitelist: ink_storage::collections::HashMap<AccountId, bool>,
+        approved_tokens: ink_storage::collections::Vec<AccountId>,
         period_duration: u16,
         voting_period_length: u128,
         grace_period_length: u128,
@@ -174,13 +174,15 @@ mod submoloch {
         total_loot: u128,
         /// total tokens with non-zero balance in guild bank
         total_guild_bank_tokens: u128,
+
+        summoning_time: Timestamp
     }
 
     impl Submoloch {
         #[ink(constructor)]
         pub fn new(
             summoner: AccountId,
-            approved_tokens: Vec<u32>,
+            approved_tokens: Vec<AccountId>,
             period_duration: Option<u16>,
             voting_period_length: Option<u128>,
             grace_period_length: Option<u128>,
@@ -213,6 +215,7 @@ mod submoloch {
             let config = builder.build().unwrap();
 
             for i in config.approved_tokens.iter() {
+                assert!(!instance.token_whitelist.contains_key(i), "duplicate approved token");
                 instance.token_whitelist.insert(*i, true);
                 instance.approved_tokens.push(*i);
             }
@@ -224,6 +227,8 @@ mod submoloch {
             instance.dilution_bound = config.dilution_bound;
             instance.processing_reward = config.processing_reward;
 
+            instance.summoning_time = instance.env().block_timestamp();
+
             let first_member = Member::new(summoner);
             instance.total_shares = first_member.shares;
             instance.members.insert(summoner, first_member);
@@ -234,13 +239,28 @@ mod submoloch {
         }
 
         #[ink(message)]
+        pub fn deposit_token(&self) -> AccountId {
+            self.approved_tokens[0]
+        }
+
+        #[ink(message)]
         pub fn members(&self, account_id: AccountId) -> Option<Member> {
             self.members.get(&account_id).copied()
         }
 
         #[ink(message)]
-        pub fn approved_tokens(&self, index: u32) -> u32 {
+        pub fn member_address_by_delegate_key(&self, account_id: AccountId) -> Option<AccountId> {
+            self.member_address_by_delegate_key.get(&account_id).copied()
+        }
+
+        #[ink(message)]
+        pub fn approved_tokens(&self, index: u32) -> AccountId {
             self.approved_tokens[index]
+        }
+
+        #[ink(message)]
+        pub fn token_whitelist(&self, token_address: AccountId) -> bool {
+            self.token_whitelist.get(&token_address).copied().unwrap_or(false)
         }
 
         #[ink(message)]
@@ -281,6 +301,16 @@ mod submoloch {
         #[ink(message)]
         pub fn total_loot(&self) -> u128 {
             self.total_loot
+        }
+
+        #[ink(message)]
+        pub fn total_guild_bank_tokens(&self) -> u128 {
+            self.total_guild_bank_tokens
+        }
+
+        #[ink(message)]
+        pub fn get_current_period(&self) -> u16 {
+            (self.env().block_timestamp() - self.summoning_time) as u16 / self.period_duration
         }
 
         #[ink(message)]
@@ -409,113 +439,6 @@ mod submoloch {
     #[cfg(test)]
     mod tests {
         use super::*;
-
-        mod test_constructor {
-            use super::*;
-
-            #[test]
-            fn verify_deployment_parameters() {
-                let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>()
-                    .expect("Cannot get accounts");
-                let submoloch =
-                    Submoloch::new(accounts.alice, vec![1], None, None, None, None, None, None);
-
-                // check configs.
-                assert_eq!(submoloch.period_duration, 17280);
-                assert_eq!(submoloch.voting_period_length, 35);
-                assert_eq!(submoloch.grace_period_length, 35);
-                assert_eq!(submoloch.proposal_deposit, 10);
-                assert_eq!(submoloch.dilution_bound, 3);
-                assert_eq!(submoloch.processing_reward, 1);
-
-                // check delegate key matchs.
-                let summoner = submoloch.members.get(&accounts.alice).unwrap();
-                assert_eq!(summoner.delegate_key, accounts.alice);
-                assert_eq!(summoner.shares, 1);
-                assert_eq!(summoner.exists, true);
-                assert_eq!(summoner.highest_index_yes_vote, 0);
-
-                assert_eq!(
-                    *submoloch
-                        .member_address_by_delegate_key
-                        .get(&accounts.alice)
-                        .unwrap(),
-                    accounts.alice
-                );
-
-                // check initial states.
-                assert_eq!(submoloch.proposal_count, 0);
-                assert_eq!(submoloch.total_shares, summoner.shares);
-                assert_eq!(submoloch.total_loot, 0);
-                assert_eq!(submoloch.total_guild_bank_tokens, 0);
-
-                // XXX: confirm initial deposit token supply and summoner balance
-
-                // XXX: check all tokens passed in construction are approved
-
-                // XXX: first token should be the deposit token
-            }
-
-            #[test]
-            fn require_fail_summoner_can_not_be_zero_address() {
-                assert!(false);
-            }
-
-            #[test]
-            fn require_fail_period_duration_can_not_be_zero() {
-                assert!(false);
-            }
-
-            #[test]
-            fn require_fail_voting_period_can_not_be_zero() {
-                assert!(false);
-            }
-
-            #[test]
-            fn require_fail_voting_period_exceeds_limit() {
-                assert!(false);
-            }
-
-            #[test]
-            fn require_fail_grace_period_exceeds_limit() {
-                assert!(false);
-            }
-
-            #[test]
-            fn require_fail_dilution_bound_can_not_be_zero() {
-                assert!(false);
-            }
-
-            #[test]
-            fn require_fail_dilution_bound_exceeds_limit() {
-                assert!(false);
-            }
-
-            #[test]
-            fn require_fail_need_at_least_one_approved_token() {
-                assert!(false);
-            }
-
-            #[test]
-            fn require_fail_too_many_tokens() {
-                assert!(false);
-            }
-
-            #[test]
-            fn require_fail_deposit_cannot_be_smaller_than_processing_reward() {
-                assert!(false);
-            }
-
-            #[test]
-            fn require_fail_approved_token_cannot_be_zero() {
-                assert!(false);
-            }
-
-            #[test]
-            fn require_fail_duplicate_approved_token() {
-                assert!(false);
-            }
-        }
 
         mod test_submit_proposal {
 
