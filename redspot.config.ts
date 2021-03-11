@@ -15,7 +15,6 @@ export default {
     development: {
       endpoint: 'ws://127.0.0.1:9944',
       types: {
-        Address: 'MultiAddress',
         LookupSource: 'MultiAddress'
       },
       gasLimit: '400000000000',

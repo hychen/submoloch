@@ -1,27 +1,22 @@
 //! The port of Moloch contract from Ethereum.
 #![cfg_attr(not(feature = "std"), no_std)]
-#![feature(alloc)]
-extern crate alloc;
 
-pub mod config;
 pub mod constant;
 pub mod member;
 pub mod proposal;
-pub mod token;
 
 use ink_lang as ink;
-
-#[macro_use]
-extern crate derive_builder;
 
 /// Define ink! contract.
 #[ink::contract]
 mod submoloch {
-    use crate::config::ConfigBuilder;
+    use crate::constant;
     use crate::member::{Member, Members};
     use crate::proposal::{Proposal, ProposalId, ProposalIndex};
     use ink_prelude::string::String;
     use ink_prelude::vec::Vec;
+    use ink_prelude::format;
+    use ink_env;
 
     /* ----------------------------------------------------*
      * Event                                               *
@@ -34,7 +29,7 @@ mod submoloch {
         summoner: AccountId,
         tokens: Vec<AccountId>,
         summoning_time: Timestamp,
-        period_duration: u128,
+        period_duration: u16,
         voting_period_length: u128,
         grace_period_length: u128,
         proposal_deposit: u128,
@@ -175,7 +170,7 @@ mod submoloch {
         /// total tokens with non-zero balance in guild bank
         total_guild_bank_tokens: u128,
 
-        summoning_time: Timestamp
+        summoning_time: Timestamp,
     }
 
     impl Submoloch {
@@ -183,58 +178,87 @@ mod submoloch {
         pub fn new(
             summoner: AccountId,
             approved_tokens: Vec<AccountId>,
-            period_duration: Option<u16>,
-            voting_period_length: Option<u128>,
-            grace_period_length: Option<u128>,
-            proposal_deposit: Option<u128>,
-            dilution_bound: Option<u128>,
-            processing_reward: Option<u128>,
+            period_duration: u16,
+            voting_period_length: u128,
+            grace_period_length: u128,
+            proposal_deposit: u128,
+            dilution_bound: u128,
+            processing_reward: u128,
         ) -> Self {
+            ink_env::debug_println(&format!("summoner: {:?}", summoner));
+            assert!(period_duration > 0, "_periodDuration cannot be 0");
+            assert!(voting_period_length > 0, "_votingPeriodLength cannot be 0");
+            assert!(
+                voting_period_length <= constant::MAX_VOTING_PERIOD_LENGTH,
+                "_votingPeriodLength exceeds limit"
+            );
+            assert!(
+                grace_period_length <= constant::MAX_GRACE_PERIOD_LENGTH,
+                "_gracePeriodLength exceeds limit"
+            );
+            assert!(dilution_bound > 0, "_dilutionBound cannot be 0");
+            assert!(
+                dilution_bound <= constant::MAX_DILUTION_BOUND,
+                "_dilutionBound exceeds limit"
+            );
+            assert!(
+                approved_tokens.len() as u128 > 0,
+                "need at least one approved token"
+            );
+            assert!(
+                approved_tokens.len() as u128 <= constant::MAX_TOKEN_WHITELIST_COUNT,
+                "too many tokens"
+            );
+            assert!(
+                proposal_deposit >= processing_reward,
+                "_proposalDeposit cannot be smaller than _processingReward"
+            );
+
             let mut instance = Self::default();
-            let mut builder = ConfigBuilder::default();
-            builder.approved_tokens(approved_tokens);
-            if period_duration.is_some() {
-                builder.period_duration(period_duration.unwrap());
-            }
-            if voting_period_length.is_some() {
-                builder.voting_period_length(voting_period_length.unwrap());
-            }
-            if grace_period_length.is_some() {
-                builder.grace_period_length(grace_period_length.unwrap());
-            }
-            if proposal_deposit.is_some() {
-                builder.proposal_deposit(proposal_deposit.unwrap());
-            }
-            if dilution_bound.is_some() {
-                builder.dilution_bound(dilution_bound.unwrap());
-            }
-            if processing_reward.is_some() {
-                builder.processing_reward(processing_reward.unwrap());
-            }
 
-            let config = builder.build().unwrap();
-
-            for i in config.approved_tokens.iter() {
-                assert!(!instance.token_whitelist.contains_key(i), "duplicate approved token");
+            for i in approved_tokens.iter() {
+                assert!(
+                    !instance.token_whitelist.contains_key(i),
+                    "duplicate approved token"
+                );
                 instance.token_whitelist.insert(*i, true);
                 instance.approved_tokens.push(*i);
             }
 
-            instance.period_duration = config.period_duration;
-            instance.voting_period_length = config.voting_period_length;
-            instance.grace_period_length = config.grace_period_length;
-            instance.proposal_deposit = config.proposal_deposit;
-            instance.dilution_bound = config.dilution_bound;
-            instance.processing_reward = config.processing_reward;
-
+            instance.period_duration = period_duration;
+            instance.voting_period_length = voting_period_length;
+            instance.grace_period_length = grace_period_length;
+            instance.proposal_deposit = proposal_deposit;
+            instance.dilution_bound = dilution_bound;
+            instance.processing_reward = processing_reward;
             instance.summoning_time = instance.env().block_timestamp();
 
-            let first_member = Member::new(summoner);
+            let first_member = Member {
+                delegate_key: summoner,
+                shares: 1,
+                loot: 0,
+                exists: true,
+                highest_index_yes_vote: 0,
+                jailed: 0,
+            };
             instance.total_shares = first_member.shares;
             instance.members.insert(summoner, first_member);
             instance
                 .member_address_by_delegate_key
                 .insert(summoner, summoner);
+
+            // NOTE: move event up here, avoid stack too deep if too many approved tokens
+            instance.env().emit_event(SummonComplete {
+                summoner,
+                tokens: approved_tokens,
+                summoning_time: instance.summoning_time,
+                period_duration,
+                voting_period_length,
+                grace_period_length,
+                proposal_deposit,
+                dilution_bound,
+                processing_reward,
+            });
             instance
         }
 
@@ -250,7 +274,9 @@ mod submoloch {
 
         #[ink(message)]
         pub fn member_address_by_delegate_key(&self, account_id: AccountId) -> Option<AccountId> {
-            self.member_address_by_delegate_key.get(&account_id).copied()
+            self.member_address_by_delegate_key
+                .get(&account_id)
+                .copied()
         }
 
         #[ink(message)]
@@ -260,7 +286,10 @@ mod submoloch {
 
         #[ink(message)]
         pub fn token_whitelist(&self, token_address: AccountId) -> bool {
-            self.token_whitelist.get(&token_address).copied().unwrap_or(false)
+            self.token_whitelist
+                .get(&token_address)
+                .copied()
+                .unwrap_or(false)
         }
 
         #[ink(message)]
