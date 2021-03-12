@@ -15,7 +15,7 @@ ink_prelude = { version = "3.0.0-rc3", default-features = false }
 
 scale = { package = "parity-scale-codec", version = "2.0", default-features = false, features = ["derive"] }
 scale-info = { version = "0.6", default-features = false, features = ["derive"], optional = true }
-derive_builder = { version = "0.9.0"}
+anyhow = { version = "1.0", default-features = false }
 
 [lib]
 name = "submoloch"
@@ -36,5 +36,6 @@ std = [
     "scale/std",
     "scale-info",
     "scale-info/std",
+    "anyhow/std"
 ]
 ink-as-dependency = []
