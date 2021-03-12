@@ -10,13 +10,12 @@ use ink_lang as ink;
 /// Define ink! contract.
 #[ink::contract]
 mod submoloch {
+    use ink_prelude::string::String;
+    use ink_prelude::vec::Vec;
+
     use crate::constant;
     use crate::member::{Member, Members};
     use crate::proposal::{Proposal, ProposalId, ProposalIndex};
-    use ink_prelude::string::String;
-    use ink_prelude::vec::Vec;
-    use ink_prelude::format;
-    use ink_env;
 
     /* ----------------------------------------------------*
      * Event                                               *
@@ -185,7 +184,6 @@ mod submoloch {
             dilution_bound: u128,
             processing_reward: u128,
         ) -> Self {
-            ink_env::debug_println(&format!("summoner: {:?}", summoner));
             assert!(period_duration > 0, "_periodDuration cannot be 0");
             assert!(voting_period_length > 0, "_votingPeriodLength cannot be 0");
             assert!(
