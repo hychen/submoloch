@@ -8,7 +8,7 @@ pub mod proposal;
 use ink_lang as ink;
 
 /// Define ink! contract.
-#[ink::contract]
+#[ink::contract(dynamic_storage_allocator = true)]
 mod submoloch {
     use ink_prelude::string::String;
     use ink_prelude::vec::Vec;
@@ -16,6 +16,36 @@ mod submoloch {
     use crate::constant;
     use crate::member::{Member, Members};
     use crate::proposal::{Proposal, ProposalId, ProposalIndex};
+    use erc20::Erc20;
+    use ink_env::call::FromAccountId;
+    use ink_prelude::format;
+    use ink_prelude::string::String;
+    use ink_prelude::vec::Vec;
+
+    const GUILD:[u8; 32] = [0x05,0x6f,0xac,0xa2,
+        0xf8,0x5a,0x10,0xbb,
+        0x2f,0xdd,0xce,0x63,
+        0x83,0xc9,0x60,0x98,
+        0x2d,0x22,0xd1,0xbd,
+        0x46,0x2e,0x66,0x10,
+        0x94,0xa2,0xb8,0x57,
+        0x74,0xa8,0x17,0x4f];
+    const ESCROW:[u8;32] = [0x05,0x6f,0xac,0xa2,
+        0xf8,0x5a,0x10,0xbb,
+        0x2f,0xdd,0xce,0x63,
+        0x83,0xc9,0x60,0x98,
+        0x2d,0x22,0xd1,0xbd,
+        0x46,0x2e,0x66,0x10,
+        0x94,0xa2,0xb8,0x57,
+        0x74,0xa8,0x17,0x4e];
+    const TOTAL:[u8;32] = [0x05,0x6f,0xac,0xa2,
+        0xf8,0x5a,0x10,0xbb,
+        0x2f,0xdd,0xce,0x63,
+        0x83,0xc9,0x60,0x98,
+        0x2d,0x22,0xd1,0xbd,
+        0x46,0x2e,0x66,0x10,
+        0x94,0xa2,0xb8,0x57,
+        0x74,0xa8,0x17,0x4b];
 
     /* ----------------------------------------------------*
      * Event                                               *
@@ -39,14 +69,14 @@ mod submoloch {
     #[ink(event)]
     pub struct SubmitProposal {
         #[ink(topic)]
-        applicant: AccountId,
+        applicant: Option<AccountId>,
         shares_requested: u128,
         loot_requested: u128,
-        tribute_offered: u128,
-        tribute_token: u128,
-        payment_requested: u128,
-        payment_token: u128,
-        details: u128,
+        tribute_offered: Option<u128>,
+        tribute_token: Option<AccountId>,
+        payment_requested: Option<u128>,
+        payment_token: Option<AccountId>,
+        details: String,
         flags: [bool; 6],
         proposal_id: ProposalId,
         #[ink(topic)]
@@ -168,7 +198,7 @@ mod submoloch {
         total_loot: u128,
         /// total tokens with non-zero balance in guild bank
         total_guild_bank_tokens: u128,
-
+        user_token_balances: ink_storage::collections::HashMap<(AccountId, AccountId), Balance>,
         summoning_time: Timestamp,
     }
 
@@ -348,37 +378,193 @@ mod submoloch {
         /// Defines a RPC call to submit a proposal.
         #[ink(message)]
         pub fn submit_proposal(
-            &self,
-            _applicant: AccountId,
-            _shares_requested: u128,
-            _loot_requested: u128,
-            _tribute_offered: u128,
-            _tribute_token: AccountId,
-            _payment_requested: u128,
-            _payment_token: AccountId,
-            _details: String,
+            &mut self,
+            applicant: AccountId,
+            shares_requested: u128,
+            loot_requested: u128,
+            tribute_offered: u128,
+            tribute_token: AccountId,
+            payment_requested: u128,
+            payment_token: AccountId,
+            details: String,
         ) -> ProposalId {
-            unimplemented!()
+            assert!(
+                (shares_requested + loot_requested) <= constant::MAX_NUMBER_OF_SHARES_AND_LOOT,
+                "too many shares requested"
+            );
+            assert!(
+                *self.token_whitelist.get(&tribute_token).unwrap_or(&false),
+                "tributeToken is not whitelisted"
+            );
+            assert!(
+                *self.token_whitelist.get(&payment_token).unwrap_or(&false),
+                "payment is not whitelisted"
+            );
+            assert!(applicant != AccountId::default(), "applicant cannot be 0");
+            assert!(
+                applicant != AccountId::from(GUILD) && applicant != AccountId::from(ESCROW) && applicant != AccountId::from(TOTAL),
+                "applicant address cannot be reserved"
+            );
+            assert!(
+                self.members.get(&applicant).unwrap().jailed == 0,
+                "proposal applicant must not be jailed"
+            );
+
+            if tribute_offered > 0
+                && *self
+                    .user_token_balances
+                    .get(&(AccountId::from(GUILD), tribute_token))
+                    .unwrap_or(&0)
+                    == 0
+            {
+                assert!(
+                    self.total_guild_bank_tokens < constant::MAX_TOKEN_GUILDBANK_COUNT,
+                    "cannot submit more tribute proposals for new tokens - guildbank is full"
+                );
+            }
+
+            let flags: [bool; 6] = Default::default(); // [sponsored, processed, didPass, cancelled, whitelist, guildkick]
+
+            // collect tribute from proposer and store it in the Moloch until the proposal is processed
+            let mut token = Erc20::from_account_id(tribute_token);
+            assert!(token
+                .transfer_from(
+                    self.env().caller(),
+                    self.env().account_id(),
+                    tribute_offered
+                )
+                .is_ok());
+            self.unsafe_add_to_balance(AccountId::from(ESCROW), tribute_token, tribute_offered);
+
+            self._submit_proposal(
+                Some(applicant),
+                shares_requested,
+                loot_requested,
+                Some(tribute_offered),
+                Some(tribute_token),
+                Some(payment_requested),
+                Some(payment_token),
+                details,
+                flags,
+            );
+            self.proposal_count - 1 // return proposalId - contracts calling submit might want it
         }
 
         /// Defines a RPC call to submit a whitelist proposal.
         #[ink(message)]
         pub fn submit_whitelist_proposal(
-            &self,
-            _token_to_whitelist: AccountId,
-            _details: String,
+            &mut self,
+            token_to_whitelist: AccountId,
+            details: String,
         ) -> ProposalId {
-            unimplemented!()
+            // assert_eq!(tokenToWhitelist != address(0), "must provide token address");
+            assert!(
+                !*self
+                    .token_whitelist
+                    .get(&token_to_whitelist)
+                    .unwrap_or(&false),
+                "cannot already have whitelisted the token"
+            );
+            assert!(
+                (self.approved_tokens.len() as u128) < constant::MAX_TOKEN_WHITELIST_COUNT,
+                "cannot submit more whitelist proposals"
+            );
+
+            let mut flags: [bool; 6] = Default::default(); // [sponsored, processed, didPass, cancelled, whitelist, guildkick]
+            flags[4] = true; // whitelist
+
+            self._submit_proposal(
+                None,
+                0,
+                0,
+                Some(0),
+                Some(token_to_whitelist),
+                None,
+                None,
+                details,
+                flags,
+            );
+            self.proposal_count - 1
         }
 
         /// Defines a RPC call to submit a guildkick proposal.
         #[ink(message)]
         pub fn submit_guildkick_proposal(
-            &self,
-            _member_to_kick: AccountId,
-            _detail: String,
+            &mut self,
+            member_to_kick: AccountId,
+            details: String,
         ) -> ProposalId {
-            unimplemented!()
+            let member = self.members.get(&member_to_kick).unwrap();
+
+            assert!(
+                member.shares > 0 || member.loot > 0,
+                "member must have at least one share or one loot"
+            );
+            assert!(member.jailed == 0, "member must not already be jailed");
+
+            // [sponsored, processed, didPass, cancelled, whitelist, guildkick]
+            let mut flags: [bool; 6] = Default::default();
+            flags[5] = true; // guild kick
+
+            self._submit_proposal(
+                Some(member_to_kick),
+                0,
+                0,
+                None,
+                None,
+                None,
+                None,
+                details,
+                flags,
+            );
+            self.proposal_count - 1
+        }
+
+        fn _submit_proposal(
+            &mut self,
+            applicant: Option<AccountId>,
+            shares_requested: u128,
+            loot_requested: u128,
+            tribute_offered: Option<u128>,
+            tribute_token: Option<AccountId>,
+            payment_requested: Option<u128>,
+            payment_token: Option<AccountId>,
+            details: String,
+            flags: [bool; 6],
+        ) {
+            let caller = self.env().caller();
+            let proposal = Proposal::new(
+                applicant,
+                caller,
+                None,
+                shares_requested,
+                loot_requested,
+                tribute_offered,
+                tribute_token,
+                payment_requested,
+                payment_token,
+                details.clone(),
+                flags,
+            );
+
+            self.proposals.insert(self.proposal_count, proposal);
+            let member_address = *self.member_address_by_delegate_key.get(&caller).unwrap();
+
+            self.env().emit_event(SubmitProposal {
+                applicant,
+                shares_requested,
+                loot_requested,
+                tribute_offered,
+                tribute_token,
+                payment_requested,
+                payment_token,
+                details,
+                flags,
+                proposal_id: self.proposal_count,
+                delegate_key: caller,
+                member_address,
+            });
+            self.proposal_count += 1
         }
 
         /// Defines a RPC call to sponsor a proposal.
@@ -460,6 +646,18 @@ mod submoloch {
         #[ink(message)]
         pub fn update_delegate_key(&self, _new_delegate_key: AccountId) -> bool {
             unimplemented!()
+        }
+
+        /***************
+        HELPER FUNCTIONS
+        ***************/
+        fn unsafe_add_to_balance(&mut self, user: AccountId, token: AccountId, amount: Balance) {
+            self.user_token_balances
+                .entry((user, token))
+                .and_modify(|old_value| *old_value += amount);
+            self.user_token_balances
+                .entry((AccountId::from(TOTAL), token))
+                .and_modify(|old_value| *old_value += amount);
         }
     }
 }
