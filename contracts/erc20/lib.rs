@@ -17,8 +17,8 @@
 use ink_lang as ink;
 
 pub use self::erc20::Erc20;
-pub use self::erc20::Result;
 pub use self::erc20::Error;
+pub use self::erc20::Result;
 
 #[ink::contract]
 mod erc20 {
@@ -207,6 +207,51 @@ mod erc20 {
                 value,
             });
             Ok(())
+        }
+
+        /**
+         * @dev Increase the amount of tokens that an owner allowed to a spender.
+         * approve should be called when allowed_[_spender] == 0. To increment
+         * allowed value is better to use this function to avoid 2 calls (and wait until
+         * the first transaction is mined)
+         * From MonolithDAO Token.sol
+         * Emits an Approval event.
+         * @param spender The address which will spend the funds.
+         * @param addedValue The amount of tokens to increase the allowance by.
+         */
+        #[ink(message)]
+        pub fn increase_allowance(&mut self, spender: AccountId, added_value: u128) -> Result<()> {
+            let owner = self.env().caller();
+            let old_value = self
+                .allowances
+                .get(&(owner, spender))
+                .unwrap_or(&0);
+            self.approve(spender, old_value + added_value)
+        }
+
+        /**
+         * @dev Decrease the amount of tokens that an owner allowed to a spender.
+         * approve should be called when allowed_[_spender] == 0. To decrement
+         * allowed value is better to use this function to avoid 2 calls (and wait until
+         * the first transaction is mined)
+         * From MonolithDAO Token.sol
+         * Emits an Approval event.
+         * @param spender The address which will spend the funds.
+         * @param subtractedValue The amount of tokens to decrease the allowance by.
+         */
+        #[ink(message)]
+        pub fn decrease_allowance(
+            &mut self,
+            spender: AccountId,
+            subtracted_value: u128,
+        ) -> Result<()> {
+            // _allowed[msg.sender][spender].sub(subtracted_value),
+            let owner = self.env().caller();
+            let old_value = self
+                .allowances
+                .get(&(owner, spender))
+                .unwrap_or(&0);
+            self.approve(spender, old_value - subtracted_value)
         }
     }
 

@@ -22,6 +22,8 @@ pub enum Vote {
 
 /// Defines Proposal.
 #[derive(
+    Copy,
+    Clone,
     Debug,
     PartialEq,
     Eq,
@@ -62,7 +64,7 @@ pub struct Proposal {
     /// [sponsored, processed, didPass, cancelled, whitelist, guildkick]
     pub flags: [bool; 6],
     /// proposal details - could be IPFS hash, plaintext, or JSON
-    pub details: String,
+    pub details: [u8; 32],
     /// the maximum # of total shares encountered at a yes vote on this proposal
     pub max_total_shares_and_loot_at_yes_vote: u128,
     // the votes on this proposal by each member
@@ -84,6 +86,10 @@ impl Proposal {
         details: String,
         flags: [bool; 6],
     ) -> Self {
+        // encodes details to an array of butes, so we could storage it on chain.
+//        let mut details_bytes: [u8; 32] = Default::default();
+ //       details_bytes.copy_from_slice(details.as_bytes());
+
         Self {
             applicant: applicant,
             proposer: proposor,
@@ -98,7 +104,7 @@ impl Proposal {
             yes_votes: 0,
             no_votes: 0,
             flags: flags,
-            details,
+            details: [0; 32],
             max_total_shares_and_loot_at_yes_vote: 0,
             //votes_by_member: 0,
         }
@@ -107,4 +113,5 @@ impl Proposal {
 
 pub type ProposalId = u128;
 pub type ProposalIndex = u128;
-pub type Proposals = ink_storage::collections::Vec<Proposal>;
+pub type ProposalQueue = ink_storage::collections::Vec<ProposalIndex>;
+pub type Proposals = ink_storage::collections::HashMap<ProposalId, Proposal>;

@@ -7,45 +7,43 @@ pub mod proposal;
 
 use ink_lang as ink;
 
+macro_rules! ensure {
+    ( $x:expr, $y:expr ) => {{
+        if !$x {
+            return Err(String::from($y));
+        }
+    }};
+}
+
 /// Define ink! contract.
-#[ink::contract(dynamic_storage_allocator = true)]
+#[ink::contract]
 mod submoloch {
+    use ink_env::call::FromAccountId;
     use ink_prelude::string::String;
+    use ink_prelude::string::ToString;
     use ink_prelude::vec::Vec;
 
     use crate::constant;
     use crate::member::{Member, Members};
-    use crate::proposal::{Proposal, ProposalId, ProposalIndex};
+    use crate::proposal::{Proposal, ProposalId, ProposalIndex, ProposalQueue, Proposals};
     use erc20::Erc20;
-    use ink_env::call::FromAccountId;
-    use ink_prelude::format;
-    use ink_prelude::string::String;
-    use ink_prelude::vec::Vec;
 
-    const GUILD:[u8; 32] = [0x05,0x6f,0xac,0xa2,
-        0xf8,0x5a,0x10,0xbb,
-        0x2f,0xdd,0xce,0x63,
-        0x83,0xc9,0x60,0x98,
-        0x2d,0x22,0xd1,0xbd,
-        0x46,0x2e,0x66,0x10,
-        0x94,0xa2,0xb8,0x57,
-        0x74,0xa8,0x17,0x4f];
-    const ESCROW:[u8;32] = [0x05,0x6f,0xac,0xa2,
-        0xf8,0x5a,0x10,0xbb,
-        0x2f,0xdd,0xce,0x63,
-        0x83,0xc9,0x60,0x98,
-        0x2d,0x22,0xd1,0xbd,
-        0x46,0x2e,0x66,0x10,
-        0x94,0xa2,0xb8,0x57,
-        0x74,0xa8,0x17,0x4e];
-    const TOTAL:[u8;32] = [0x05,0x6f,0xac,0xa2,
-        0xf8,0x5a,0x10,0xbb,
-        0x2f,0xdd,0xce,0x63,
-        0x83,0xc9,0x60,0x98,
-        0x2d,0x22,0xd1,0xbd,
-        0x46,0x2e,0x66,0x10,
-        0x94,0xa2,0xb8,0x57,
-        0x74,0xa8,0x17,0x4b];
+    const GUILD: [u8; 32] = [
+        0x05, 0x6f, 0xac, 0xa2, 0xf8, 0x5a, 0x10, 0xbb, 0x2f, 0xdd, 0xce, 0x63, 0x83, 0xc9, 0x60,
+        0x98, 0x2d, 0x22, 0xd1, 0xbd, 0x46, 0x2e, 0x66, 0x10, 0x94, 0xa2, 0xb8, 0x57, 0x74, 0xa8,
+        0x17, 0x4f,
+    ];
+    // 12KzhL2G5oWLyeFciHKowDgedsLtqXhTzR2Njx4Ksb5DWjkA
+    const ESCROW: [u8; 32] = [
+        0x3a, 0xb8, 0xde, 0xd6, 0x41, 0x30, 0x3c, 0x10, 0x51, 0x18, 0x47, 0xfd, 0xa7, 0x1d, 0x85,
+        0x50, 0xda, 0xbd, 0x85, 0x5b, 0xd6, 0xe, 0x78, 0x9c, 0xac, 0xa0, 0x7f, 0x12, 0x1f, 0xbf,
+        0x92, 0x49,
+    ];
+    const TOTAL: [u8; 32] = [
+        0x05, 0x6f, 0xac, 0xa2, 0xf8, 0x5a, 0x10, 0xbb, 0x2f, 0xdd, 0xce, 0x63, 0x83, 0xc9, 0x60,
+        0x98, 0x2d, 0x22, 0xd1, 0xbd, 0x46, 0x2e, 0x66, 0x10, 0x94, 0xa2, 0xb8, 0x57, 0x74, 0xa8,
+        0x17, 0x4b,
+    ];
 
     /* ----------------------------------------------------*
      * Event                                               *
@@ -56,7 +54,8 @@ mod submoloch {
     pub struct SummonComplete {
         #[ink(topic)]
         summoner: AccountId,
-        tokens: Vec<AccountId>,
+        //@FIXME: Vec<AccountId> causes Decode Fail.
+        //        tokens: Vec<AccountId>,
         summoning_time: Timestamp,
         period_duration: u16,
         voting_period_length: u128,
@@ -82,7 +81,7 @@ mod submoloch {
         #[ink(topic)]
         delegate_key: AccountId,
         #[ink(topic)]
-        member_address: AccountId,
+        member_address: Option<AccountId>,
     }
     /// Defines SponsorProposal event.
     #[ink(event)]
@@ -188,8 +187,8 @@ mod submoloch {
         proposed_to_whitelist: ink_storage::collections::HashMap<AccountId, bool>,
         proposed_to_kick: ink_storage::collections::HashMap<AccountId, bool>,
         member_address_by_delegate_key: ink_storage::collections::HashMap<AccountId, AccountId>,
-        proposals: ink_storage::collections::HashMap<ProposalId, Proposal>,
-        proposal_queue: ink_storage::collections::Vec<ProposalIndex>,
+        proposals: Proposals,
+        proposal_queue: ProposalQueue,
         /// total proposals submitted
         proposal_count: u128,
         /// total shares across all members
@@ -214,6 +213,7 @@ mod submoloch {
             dilution_bound: u128,
             processing_reward: u128,
         ) -> Self {
+            assert!(summoner != AccountId::default(), "summoner cannot be 0");
             assert!(period_duration > 0, "_periodDuration cannot be 0");
             assert!(voting_period_length > 0, "_votingPeriodLength cannot be 0");
             assert!(
@@ -245,6 +245,7 @@ mod submoloch {
             let mut instance = Self::default();
 
             for i in approved_tokens.iter() {
+                assert!(*i != AccountId::default(), "_approvedToken cannot be 0");
                 assert!(
                     !instance.token_whitelist.contains_key(i),
                     "duplicate approved token"
@@ -275,10 +276,13 @@ mod submoloch {
                 .member_address_by_delegate_key
                 .insert(summoner, summoner);
 
+            // FIXME: Vec<AccountId> decoded failed.
+
             // NOTE: move event up here, avoid stack too deep if too many approved tokens
             instance.env().emit_event(SummonComplete {
                 summoner,
-                tokens: approved_tokens,
+                // @FIXME: this caues event decoding failed on js.
+                //                tokens: approved_tokens,
                 summoning_time: instance.summoning_time,
                 period_duration,
                 voting_period_length,
@@ -346,6 +350,11 @@ mod submoloch {
         }
 
         #[ink(message)]
+        pub fn proposals(&self, proposal_id: ProposalId) -> Option<Proposal> {
+            self.proposals.get(&proposal_id).copied()
+        }
+
+        #[ink(message)]
         pub fn proposal_count(&self) -> u128 {
             self.proposal_count
         }
@@ -382,31 +391,35 @@ mod submoloch {
             applicant: AccountId,
             shares_requested: u128,
             loot_requested: u128,
-            tribute_offered: u128,
+            tribute_offered: Balance,
             tribute_token: AccountId,
-            payment_requested: u128,
+            payment_requested: Balance,
             payment_token: AccountId,
             details: String,
-        ) -> ProposalId {
-            assert!(
+        ) -> Result<ProposalId, String> {
+            ensure!(
                 (shares_requested + loot_requested) <= constant::MAX_NUMBER_OF_SHARES_AND_LOOT,
                 "too many shares requested"
             );
-            assert!(
+            ensure!(
                 *self.token_whitelist.get(&tribute_token).unwrap_or(&false),
                 "tributeToken is not whitelisted"
             );
-            assert!(
+            ensure!(
                 *self.token_whitelist.get(&payment_token).unwrap_or(&false),
                 "payment is not whitelisted"
             );
-            assert!(applicant != AccountId::default(), "applicant cannot be 0");
-            assert!(
-                applicant != AccountId::from(GUILD) && applicant != AccountId::from(ESCROW) && applicant != AccountId::from(TOTAL),
+            ensure!(applicant != AccountId::default(), "applicant cannot be 0");
+            ensure!(
+                applicant != AccountId::from(GUILD)
+                    && applicant != AccountId::from(ESCROW)
+                    && applicant != AccountId::from(TOTAL),
                 "applicant address cannot be reserved"
             );
-            assert!(
-                self.members.get(&applicant).unwrap().jailed == 0,
+            ensure!(
+                // @FIXME: applicant can be not a member, this check is dirty.
+                !self.members.contains_key(&applicant)
+                    || self.members.get(&applicant).unwrap().jailed != 0,
                 "proposal applicant must not be jailed"
             );
 
@@ -417,7 +430,7 @@ mod submoloch {
                     .unwrap_or(&0)
                     == 0
             {
-                assert!(
+                ensure!(
                     self.total_guild_bank_tokens < constant::MAX_TOKEN_GUILDBANK_COUNT,
                     "cannot submit more tribute proposals for new tokens - guildbank is full"
                 );
@@ -426,14 +439,25 @@ mod submoloch {
             let flags: [bool; 6] = Default::default(); // [sponsored, processed, didPass, cancelled, whitelist, guildkick]
 
             // collect tribute from proposer and store it in the Moloch until the proposal is processed
-            let mut token = Erc20::from_account_id(tribute_token);
-            assert!(token
-                .transfer_from(
-                    self.env().caller(),
-                    self.env().account_id(),
-                    tribute_offered
-                )
-                .is_ok());
+            let mut token: Erc20 = Erc20::from_account_id(tribute_token);
+            let r: erc20::Result<()> = token.transfer_from(
+                self.env().caller(),
+                self.env().account_id(),
+                tribute_offered,
+            );
+            if r.is_err() {
+                match r.err().unwrap() {
+                    erc20::Error::InsufficientAllowance => {
+                        ink_env::debug_println("Erc20 Transfer fail - InsufficentAllowance");
+                        return Err(String::from("InsufficentAllowance"));
+                    }
+                    erc20::Error::InsufficientBalance => {
+                        ink_env::debug_println("Erc20 Transfer fail - InsufficentBalance.");
+                        return Err(String::from("InsufficentBalance"));
+                    }
+                }
+            }
+
             self.unsafe_add_to_balance(AccountId::from(ESCROW), tribute_token, tribute_offered);
 
             self._submit_proposal(
@@ -447,7 +471,7 @@ mod submoloch {
                 details,
                 flags,
             );
-            self.proposal_count - 1 // return proposalId - contracts calling submit might want it
+            Ok(self.proposal_count - 1) // return proposalId - contracts calling submit might want it
         }
 
         /// Defines a RPC call to submit a whitelist proposal.
@@ -456,23 +480,25 @@ mod submoloch {
             &mut self,
             token_to_whitelist: AccountId,
             details: String,
-        ) -> ProposalId {
-            // assert_eq!(tokenToWhitelist != address(0), "must provide token address");
-            assert!(
+        ) -> Result<ProposalId, String> {
+            ensure!(
+                token_to_whitelist != AccountId::default(),
+                "must provide token address"
+            );
+            ensure!(
                 !*self
                     .token_whitelist
                     .get(&token_to_whitelist)
                     .unwrap_or(&false),
                 "cannot already have whitelisted the token"
             );
-            assert!(
+            ensure!(
                 (self.approved_tokens.len() as u128) < constant::MAX_TOKEN_WHITELIST_COUNT,
                 "cannot submit more whitelist proposals"
             );
 
             let mut flags: [bool; 6] = Default::default(); // [sponsored, processed, didPass, cancelled, whitelist, guildkick]
             flags[4] = true; // whitelist
-
             self._submit_proposal(
                 None,
                 0,
@@ -484,7 +510,7 @@ mod submoloch {
                 details,
                 flags,
             );
-            self.proposal_count - 1
+            Ok(self.proposal_count - 1)
         }
 
         /// Defines a RPC call to submit a guildkick proposal.
@@ -525,9 +551,9 @@ mod submoloch {
             applicant: Option<AccountId>,
             shares_requested: u128,
             loot_requested: u128,
-            tribute_offered: Option<u128>,
+            tribute_offered: Option<Balance>,
             tribute_token: Option<AccountId>,
-            payment_requested: Option<u128>,
+            payment_requested: Option<Balance>,
             payment_token: Option<AccountId>,
             details: String,
             flags: [bool; 6],
@@ -548,7 +574,7 @@ mod submoloch {
             );
 
             self.proposals.insert(self.proposal_count, proposal);
-            let member_address = *self.member_address_by_delegate_key.get(&caller).unwrap();
+            let member_address = self.member_address_by_delegate_key.get(&caller).map(|a| *a);
 
             self.env().emit_event(SubmitProposal {
                 applicant,
@@ -562,7 +588,7 @@ mod submoloch {
                 flags,
                 proposal_id: self.proposal_count,
                 delegate_key: caller,
-                member_address,
+                member_address: member_address,
             });
             self.proposal_count += 1
         }
@@ -648,16 +674,36 @@ mod submoloch {
             unimplemented!()
         }
 
+        #[ink(message)]
+        pub fn get_proposal_queue_length(&self) -> u128 {
+            self.proposal_queue.len() as u128
+        }
+
+        #[ink(message)]
+        pub fn get_proposal_flags(&self, proposal_id: ProposalId) -> Option<[bool; 6]> {
+            match self.proposals(proposal_id) {
+                Some(proposal) => Some(proposal.flags),
+                None => None,
+            }
+        }
+
+        #[ink(message)]
+        pub fn user_token_balances(&self, user: AccountId, token: AccountId) -> Balance {
+            *self.user_token_balances.get(&(user, token)).unwrap_or(&0)
+        }
+
         /***************
         HELPER FUNCTIONS
         ***************/
         fn unsafe_add_to_balance(&mut self, user: AccountId, token: AccountId, amount: Balance) {
             self.user_token_balances
                 .entry((user, token))
-                .and_modify(|old_value| *old_value += amount);
+                .and_modify(|old_value| *old_value += amount)
+                .or_insert(amount);
             self.user_token_balances
                 .entry((AccountId::from(TOTAL), token))
-                .and_modify(|old_value| *old_value += amount);
+                .and_modify(|old_value| *old_value += amount)
+                .or_insert(amount);
         }
     }
 }

@@ -4,6 +4,18 @@ import { expect } from 'chai';
 const { assert } = chai;
 
 import { patract, network } from 'redspot';
+import {
+  verifyBalance,
+  verifyInternalBalance,
+  verifyInternalBalances,
+  verifyAllowance,
+  verifyProposal,
+  verifyFlags,
+  verifyBalances,
+  verifySubmitVote,
+  verifyProcessProposal,
+  verifyMember
+} from './test-utils';
 
 chai
   .use(require('chai-as-promised'))
@@ -62,7 +74,7 @@ const revertMessages = {
   processGuildKickProposalMustBeAGuildKickProposal: 'must be a guild kick proposal',
   notAMember: 'not a member',
   notAShareholder: 'not a shareholder',
-  rageQuitInsufficientShares: 'insufficient shares',
+  rageQuitufficientShares: 'insufficient shares',
   rageQuitInsufficientLoot: 'insufficient loot',
   rageQuitUntilHighestIndex: 'cannot ragequit until highest index proposal member voted YES on is processed',
   withdrawBalanceInsufficientBalance: 'insufficient balance',
@@ -80,9 +92,9 @@ const revertMessages = {
 const SolRevert = 'VM Exception while processing transaction: revert'
 
 const zeroAddress = '0x0000000000000000000000000000000000000000'
-const GUILD = '0x000000000000000000000000000000000000dead'
-const ESCROW = '0x000000000000000000000000000000000000beef'
-const TOTAL = '0x000000000000000000000000000000000000babe'
+const GUILD = '13C2q9xLsW4xTeQCcp3fr44vBEcVQx7sERzKb9iENWDk5FZM'
+const ESCROW = '12KzhL2G5oWLyeFciHKowDgedsLtqXhTzR2Njx4Ksb5DWjkA';
+const TOTAL = '14KRrGnAj13EZkWu72PtGbupXcTF37eyZUJJ4TS1sEr1J3Dh';
 const MAX_TOKEN_WHITELIST_COUNT = new BN('100') // TODO: actual number to be determined
 
 const _1 = new BN('1')
@@ -115,8 +127,10 @@ async function setup() {
   const signers = await getSigners();
   const creator = signers[0];
   const summoner = signers[1];
+  const applicant1 = await getRandomSigner(creator, one.muln(100));
+  const applicant2 = await getRandomSigner(creator, one.muln(100));
   const TokenContractFactory = await getContractFactory('erc20', creator);
-  const tokenAlpha = await TokenContractFactory.deploy('BaseErc20,new', deploymentConfig.TOKEN_SUPPLY);
+  const tokenAlpha = await TokenContractFactory.deploy('new', deploymentConfig.TOKEN_SUPPLY);
   const SubMolochContractFactory = await getContractFactory('submoloch', creator);
   const submoloch = await SubMolochContractFactory.deploy('new',
     summoner.address,
@@ -128,7 +142,7 @@ async function setup() {
     deploymentConfig.DILUTION_BOUND,
     deploymentConfig.PROCESSING_REWARD
   );
-  return { creator, summoner, tokenAlpha, submoloch, SubMolochContractFactory, TokenContractFactory };
+  return { creator, summoner, applicant1, applicant2, tokenAlpha, submoloch, SubMolochContractFactory, TokenContractFactory };
 }
 
 describe('Submoloch', () => {
@@ -150,6 +164,24 @@ describe('Submoloch', () => {
 
   api.registerTypes({
     'ProposalId': 'u128',
+    'ProposalIndex': 'u128',
+    'Proposal': {
+      'applicant': 'Option<AccountId>',
+      'proposer': 'AccountId',
+      'sponsor': 'Option<AccountId>',
+      'sharesRequested': 'u128',
+      'lootRequested': 'u128',
+      'tributeOffered': 'Option<u128>',
+      'tributeToken': 'Option<AccountId>',
+      'paymentRequested': 'Option<u128>',
+      'paymentToken': 'Option<AccountId>',
+      'startingPeriod': 'u128',
+      'yesVotes': 'u128',
+      'noVotes': 'u128',
+      'flags': '[bool; 6]',
+      'details': '[u8; 32]',
+      'maxTotalSharesAndLootAtYesVote': 'u128'
+    },
     'Member': {
       'delegateKey': 'AccountId',
       'shares': 'u128',
@@ -159,6 +191,11 @@ describe('Submoloch', () => {
       'jailed': 'ProposalId',
     }
   });
+
+  const fundAndApproveToMoloch = async (token, moloch, { to, from, value }) => {
+    await token.transfer(to, value, { from: from });
+    await token.approve(moloch.address, value, { from: to });
+  }
 
   after(() => {
     return api.disconnect();
@@ -171,7 +208,7 @@ describe('Submoloch', () => {
       const depositToken = tokenAlpha;
 
       // transfer initial funds.
-      await tokenAlpha.tx['baseErc20,transfer'](summoner.address, initSummonerBalance, { from: creator.address });
+      await tokenAlpha.tx['transfer'](summoner.address, initSummonerBalance, { from: creator.address });
 
       // const now = await api.query.timestamp.now();
 
@@ -204,6 +241,7 @@ describe('Submoloch', () => {
 
       // @ts-ignore
       let summonerData = (await submoloch.query.members(summoner.address))?.output.unwrap();
+
       // @ts-ignore  
       expect(summonerData?.delegateKey).to.eq(summoner.address); // delegateKey matches
       // @ts-ignore
@@ -227,11 +265,11 @@ describe('Submoloch', () => {
       assert.equal(+totalGuildBankTokens.output, 0)
 
       // confirm initial deposit token supply and summoner balance
-      const tokenSupply = (await tokenAlpha['baseErc20,totalSupply']()).output;
+      const tokenSupply = (await tokenAlpha['totalSupply']()).output;
       assert.equal(tokenSupply, deploymentConfig.TOKEN_SUPPLY)
-      const summonerBalance = (await tokenAlpha['baseErc20,balanceOf'](summoner.address)).output;
+      const summonerBalance = (await tokenAlpha['balanceOf'](summoner.address)).output;
       assert.equal(summonerBalance, initSummonerBalance)
-      const creatorBalance = (await tokenAlpha['baseErc20,balanceOf'](creator.address)).output;
+      const creatorBalance = (await tokenAlpha['balanceOf'](creator.address)).output;
       assert.equal(creatorBalance, deploymentConfig.TOKEN_SUPPLY - initSummonerBalance)
 
       // check all tokens passed in construction are approved
@@ -244,8 +282,7 @@ describe('Submoloch', () => {
       assert.deepEqual(firstWhitelistedToken.output, tokenAlpha.address);
     });
 
-    // XXX: We mau not need this check in ink!.
-    it.skip('require fail - summoner can not be zero address', async () => {
+    it('require fail - summoner can not be zero address', async () => {
       const { SubMolochContractFactory, tokenAlpha } = await setup();
       await SubMolochContractFactory.deploy('new',
         zeroAddress,
@@ -447,7 +484,7 @@ describe('Submoloch', () => {
     })
 
     // we may not need this check.
-    it.skip('require fail - approved token cannot be zero', async () => {
+    it('require fail - approved token cannot be zero', async () => {
       const { summoner, SubMolochContractFactory, tokenAlpha } = await setup();
       await SubMolochContractFactory.deploy('new',
         summoner.address,
@@ -478,6 +515,487 @@ describe('Submoloch', () => {
         // @ts-ignore
       ).should.be.rejectedWith('Instantiation failed');
 
+    })
+  });
+
+  describe('submit proposal', async () => {
+    let tokenAlpha, moloch;
+    let summoner;
+    let proposal1;
+
+    beforeEach(async () => {
+      const prepared = await setup();
+      tokenAlpha = prepared.tokenAlpha;
+      moloch = prepared.submoloch;
+      summoner = prepared.summoner;
+
+      proposal1 = {
+        applicant: prepared.applicant1,
+        sharesRequested: standardShareRequest,
+        lootRequested: standardLootRequest,
+        tributeOffered: standardTribute,
+        tributeToken: tokenAlpha,
+        paymentRequested: 0,
+        paymentToken: tokenAlpha,
+        details: 'all hail moloch'
+      };
+
+      await fundAndApproveToMoloch(tokenAlpha, moloch, {
+        to: prepared.applicant1.address,
+        from: prepared.creator.address,
+        value: proposal1.tributeOffered
+      })
+    });
+
+    it('happy case', async () => {
+      const countBefore: BN = (await moloch.proposalCount()).output;
+
+      await verifyBalance({
+        token: tokenAlpha,
+        address: proposal1.applicant.address,
+        expectedBalance: proposal1.tributeOffered
+      });
+
+      // grant the permission.
+      await tokenAlpha.approve(moloch.address, proposal1.tributeOffered, {
+        signer: proposal1.applicant
+      });
+
+      const proposer = proposal1.applicant;
+
+      await moloch.submitProposal(
+        proposal1.applicant.address,
+        proposal1.sharesRequested,
+        proposal1.lootRequested,
+        proposal1.tributeOffered,
+        proposal1.tributeToken.address,
+        proposal1.paymentRequested,
+        proposal1.paymentToken.address,
+        proposal1.details,
+        { signer: proposal1.applicant }
+      );
+
+      const countAfter = (await moloch.query.proposalCount()).output;
+      assert.equal(countAfter.toNumber(), countBefore.add(_1).toNumber());
+
+      await verifyProposal({
+        moloch: moloch,
+        proposal: proposal1,
+        proposalId: firstProposalIndex,
+        proposer: proposer.address,
+        expectedProposalCount: 1
+      })
+
+      await verifyFlags({
+        moloch: moloch,
+        proposalId: firstProposalIndex,
+        expectedFlags: [false, false, false, false, false, false]
+      })
+
+      // tribute been moved to the DAO
+      await verifyBalance({
+        token: tokenAlpha,
+        address: proposal1.applicant.address,
+        expectedBalance: 0
+      })
+
+      // DAO is holding the tribute
+      await verifyBalance({
+        token: tokenAlpha,
+        address: moloch.address,
+        expectedBalance: proposal1.tributeOffered
+      })
+
+      // ESCROW balance has been updated
+      await verifyInternalBalance({
+        moloch: moloch,
+        token: tokenAlpha,
+        user: ESCROW,
+        expectedBalance: proposal1.tributeOffered
+      })
+    })
+
+    it('require fail - insufficient tribute tokens', async () => {
+      // grant the permission.
+      await tokenAlpha.approve(moloch.address, proposal1.tributeOffered, {
+        signer: proposal1.applicant
+      });
+
+      await tokenAlpha.decreaseAllowance(moloch.address, 1, { signer: proposal1.applicant });
+
+      // SafeMath reverts in ERC20.transferFrom
+      await expect(moloch.submitProposal(
+        proposal1.applicant.address,
+        proposal1.sharesRequested,
+        proposal1.lootRequested,
+        proposal1.tributeOffered,
+        proposal1.tributeToken.address,
+        proposal1.paymentRequested,
+        proposal1.paymentToken.address,
+        proposal1.details,
+        { signer: proposal1.applicant }
+      )).not.emit(moloch, "SubmitProposal");
+    })
+
+    it('require fail - tribute token is not whitelisted', async () => {
+      await tokenAlpha.approve(moloch.address, proposal1.tributeOffered, {
+        signer: proposal1.applicant
+      });
+      // use ESCROW address as a fake token address.
+      proposal1.tributeToken = ESCROW;
+
+      await expect(moloch.submitProposal(
+        proposal1.applicant.address,
+        proposal1.sharesRequested,
+        proposal1.lootRequested,
+        proposal1.tributeOffered,
+        proposal1.tributeToken.address,
+        proposal1.paymentRequested,
+        proposal1.paymentToken.address,
+        proposal1.details,
+        { from: proposal1.applicant }
+      )).to.not.emit(moloch, "SubmitProposal");
+    });
+
+    it('require fail - applicant can not be zero', async () => {
+      await expect(moloch.submitProposal(
+        null,
+        proposal1.sharesRequested,
+        proposal1.lootRequested,
+        proposal1.tributeOffered,
+        proposal1.tributeToken.address,
+        proposal1.paymentRequested,
+        proposal1.paymentToken.address,
+        proposal1.details,
+        { signer: proposal1.applicant }
+      )).to.not.emit(moloch, "SubmitProposal");
+    })
+
+    it('require fail - applicant address can not be reserved', async () => {
+      await expect(moloch.submitProposal(
+        GUILD,
+        proposal1.sharesRequested,
+        proposal1.lootRequested,
+        proposal1.tributeOffered,
+        proposal1.tributeToken.address,
+        proposal1.paymentRequested,
+        proposal1.paymentToken.address,
+        proposal1.details,
+        { signer: proposal1.applicant }
+      )).to.not.emit(moloch, "SubmitProposal");
+
+      await expect(moloch.submitProposal(
+        ESCROW,
+        proposal1.sharesRequested,
+        proposal1.lootRequested,
+        proposal1.tributeOffered,
+        proposal1.tributeToken.address,
+        proposal1.paymentRequested,
+        proposal1.paymentToken.address,
+        proposal1.details,
+        { signer: proposal1.applicant }
+      )).not.emit(moloch, "SubmitProposal");
+
+      await expect(moloch.submitProposal(
+        TOTAL,
+        proposal1.sharesRequested,
+        proposal1.lootRequested,
+        proposal1.tributeOffered,
+        proposal1.tributeToken.address,
+        proposal1.paymentRequested,
+        proposal1.paymentToken.address,
+        proposal1.details,
+        { signer: proposal1.applicant }
+      )).to.not.emit(moloch, "SubmitProposal");
+    })
+
+    it('require fail - applicant address can not be reserved', async () => {
+      await expect(moloch.submitProposal(
+        GUILD,
+        proposal1.sharesRequested,
+        proposal1.lootRequested,
+        proposal1.tributeOffered,
+        proposal1.tributeToken.address,
+        proposal1.paymentRequested,
+        proposal1.paymentToken.address,
+        proposal1.details,
+        { signer: proposal1.applicant }
+      )).to.not.emit(moloch, "SubmitProposal");
+
+      await expect(moloch.submitProposal(
+        ESCROW,
+        proposal1.sharesRequested,
+        proposal1.lootRequested,
+        proposal1.tributeOffered,
+        proposal1.tributeToken.address,
+        proposal1.paymentRequested,
+        proposal1.paymentToken.address,
+        proposal1.details,
+        { signer: proposal1.applicant }
+      )).to.not.emit(moloch, "SubmitProposal");
+
+      await expect(moloch.submitProposal(
+        TOTAL,
+        proposal1.sharesRequested,
+        proposal1.lootRequested,
+        proposal1.tributeOffered,
+        proposal1.tributeToken.address,
+        proposal1.paymentRequested,
+        proposal1.paymentToken.address,
+        proposal1.details,
+        { signer: proposal1.applicant }
+      )).to.not.emit(moloch, "SubmitProposal");
+    })
+
+    it('failure - too many shares requested', async () => {
+      await expect(moloch.submitProposal(
+        proposal1.applicant.address,
+        _1e18Plus1, // MAX_NUMBER_OF_SHARES_AND_LOOT
+        0, // skip loot
+        0, // skip tribute
+        proposal1.tributeToken.address,
+        proposal1.paymentRequested,
+        proposal1.paymentToken.address,
+        proposal1.details,
+        { signer: proposal1.applicant }
+      )).to.not.emit(moloch, "SubmitProposal");
+
+      const proposalCount = await moloch.proposalCount();
+      expect(proposalCount.output).eq(0);
+
+      // should work with one less
+      await moloch.submitProposal(
+        proposal1.applicant.address,
+        _1e18, // MAX_NUMBER_OF_SHARES_AND_LOOT - 1
+        0, // skip loot
+        0, // skip tribute
+        proposal1.tributeToken.address,
+        proposal1.paymentRequested,
+        proposal1.paymentToken.address,
+        proposal1.details,
+        { signer: proposal1.applicant }
+      )
+
+      const proposalCountAfter = await moloch.proposalCount()
+      expect(proposalCountAfter.output).to.eq(1);
+    })
+
+    it('failure - too many shares (just loot) requested', async () => {
+      await expect(moloch.submitProposal(
+        proposal1.applicant.address,
+        0, // skip shares
+        _1e18Plus1, // MAX_NUMBER_OF_SHARES_AND_LOOT
+        0, // skip tribute
+        proposal1.tributeToken.address,
+        proposal1.paymentRequested,
+        proposal1.paymentToken.address,
+        proposal1.details,
+        { signer: proposal1.applicant }
+      )).to.not.emit(moloch, "SubmitProposal");
+
+      const proposalCount = await moloch.proposalCount();
+      expect(proposalCount.output.toNumber()).to.eq(0);
+
+      // should work with one less
+      await moloch.submitProposal(
+        proposal1.applicant.address,
+        0, // skip shares
+        _1e18, // MAX_NUMBER_OF_SHARES_AND_LOOT - 1
+        0, // skip tribute
+        proposal1.tributeToken.address,
+        proposal1.paymentRequested,
+        proposal1.paymentToken.address,
+        proposal1.details,
+        { signer: proposal1.applicant }
+      )
+
+      const proposalCountAfter = await moloch.proposalCount();
+      expect(proposalCountAfter.output.toNumber()).to.eq(1);
+    })
+
+    it('failure - too many shares (& loot) requested', async () => {
+      await expect(moloch.submitProposal(
+        proposal1.applicant.address,
+        _1e18Plus1.sub(new BN('10')), // MAX_NUMBER_OF_SHARES_AND_LOOT - 10
+        10, // 10 loot
+        0, // skip tribute
+        proposal1.tributeToken.address,
+        proposal1.paymentRequested,
+        proposal1.paymentToken.address,
+        proposal1.details,
+        { signer: proposal1.applicant }
+      )).not.emit(moloch, "SubmitProposal");
+
+      const proposalCount = await moloch.proposalCount();
+      expect(proposalCount.output.toNumber()).to.eq(0);
+
+      // should work with one less
+      await moloch.submitProposal(
+        proposal1.applicant.address,
+        _1e18.sub(new BN('10')), // MAX_NUMBER_OF_SHARES_AND_LOOT - 10
+        10, // 10 loot
+        0, // skip tribute
+        proposal1.tributeToken.address,
+        proposal1.paymentRequested,
+        proposal1.paymentToken.address,
+        proposal1.details,
+        { signer: proposal1.applicant }
+      )
+
+      const proposalCountAfter = await moloch.proposalCount();
+      expect(proposalCountAfter.output.toNumber()).to.eq(1);
+    })
+
+    it('happy case - second submitted proposal returns incremented proposalId', async () => {
+     const result1 = await moloch.submitProposal(
+          proposal1.applicant.address,
+          proposal1.sharesRequested,
+          proposal1.lootRequested,
+          0, // skip tribute
+          proposal1.tributeToken.address,
+          proposal1.paymentRequested,
+          proposal1.paymentToken.address,
+          proposal1.details,
+          { signer : summoner }
+      );
+     const event = result1.events[1];
+     expect(event.args[9]).eq(0);
+
+      const result2= await moloch.submitProposal(
+          proposal1.applicant.address,
+          proposal1.sharesRequested,
+          proposal1.lootRequested,
+          0, // skip tribute
+          proposal1.tributeToken.address,
+          proposal1.paymentRequested,
+          proposal1.paymentToken.address,
+          proposal1.details,
+          { signer: summoner }
+      );
+
+      // @FIXME: Why the events has both SummonComplete, and SubmitProposal?
+      // I expect we either have 1 event or 3 events here.
+      const event2 = result2.events[1];
+      expect(event2.args[9]).eq(1);
+    })
+  });
+
+  describe('submitWhitelistProposal', () => {
+    let newToken, tokenAlpha, moloch;
+    let TokenContractFactory;
+    let summoner;
+    let proposal1;
+
+    beforeEach(async () => {
+      const prepared = await setup();
+      newToken = await prepared.TokenContractFactory.deploy('new', deploymentConfig.TOKEN_SUPPLY);
+      moloch = prepared.submoloch;
+      tokenAlpha = prepared.tokenAlpha;
+      summoner = prepared.summoner;
+      TokenContractFactory = prepared.TokenContractFactory;
+
+      proposal1 = {
+        applicant: prepared.applicant1,
+        sharesRequested: standardShareRequest,
+        lootRequested: standardLootRequest,
+        tributeOffered: standardTribute,
+        tributeToken: newToken,
+        paymentRequested: 0,
+        paymentToken: newToken,
+        details: 'all hail moloch'
+      };
+    });
+
+    it('happy case', async () => {
+      const proposer = proposal1.applicant.address;
+      const whitelistProposal = {
+        applicant: null,
+        proposer: proposal1.applicant.address,
+        sharesRequested: 0,
+        tributeOffered: 0,
+        tributeToken: newToken,
+        paymentRequested: 0,
+        paymentToken: null,
+        details: 'whitelist me!'
+      }
+
+      // no tribute value is required
+      await verifyBalance({
+        token: newToken,
+        address: proposal1.applicant.address,
+        expectedBalance: 0
+      })
+
+      await moloch.submitWhitelistProposal(
+        newToken.address,
+        'whitelist me!',
+        { signer: proposal1.applicant }
+      )
+
+      await verifyProposal({
+        moloch: moloch,
+        proposal: whitelistProposal,
+        proposalId: firstProposalIndex,
+        proposer: proposer,
+        expectedProposalCount: 1
+      })
+
+      await verifyFlags({
+        moloch: moloch,
+        proposalId: firstProposalIndex,
+        expectedFlags: [false, false, false, false, true, false] // whitelist flag set to true after proposal
+      })
+
+      // no tribute value is required
+      await verifyBalance({
+        token: newToken,
+        address: proposal1.applicant.address,
+        expectedBalance: 0
+      })
+
+      // no tribute value is required so moloch will be empty
+      await verifyBalance({
+        token: newToken,
+        address: moloch.address,
+        expectedBalance: 0
+      })
+    });
+
+    it('require fail - applicant can not be zero', async () => {
+      await expect(moloch.submitWhitelistProposal(
+        zeroAddress,
+        'whitelist me!',
+        { signer: proposal1.applicant }
+      )).to.not.emit(moloch, "SubmitProposal");
+    });
+
+    it('require fail - cannot add already have whitelisted the token', async () => {
+      await expect(moloch.submitWhitelistProposal(
+        tokenAlpha.address,
+        'whitelist me!',
+        { signer: proposal1.applicant }
+      )).to.not.emit(moloch, "SubmitProposal");
+    });
+
+    it('happy case - second submitted proposal returns incremented proposalId', async () => {
+      const result1 = await moloch.submitWhitelistProposal(
+          newToken.address,
+          'whitelist me!',
+          { signer: summoner }
+      );
+      const proposalId1 = result1.events[0].args[9];
+      expect(proposalId1).to.eq(0);
+
+      const tokenBeta = await TokenContractFactory.deploy('new', deploymentConfig.TOKEN_SUPPLY);
+
+      const result2 = await moloch.submitWhitelistProposal(
+          tokenBeta.address,
+          'whitelist me!',
+          { signer: summoner }
+      )
+
+      const proposalId2 = result2.events[0].args[9];
+      expect(proposalId2).to.eq(1);
     })
   });
 
