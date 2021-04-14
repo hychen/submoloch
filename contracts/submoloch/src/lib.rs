@@ -39,22 +39,6 @@ mod submoloch {
     use crate::utils;
     use erc20::Erc20;
 
-    const GUILD: [u8; 32] = [
-        0x05, 0x6f, 0xac, 0xa2, 0xf8, 0x5a, 0x10, 0xbb, 0x2f, 0xdd, 0xce, 0x63, 0x83, 0xc9, 0x60,
-        0x98, 0x2d, 0x22, 0xd1, 0xbd, 0x46, 0x2e, 0x66, 0x10, 0x94, 0xa2, 0xb8, 0x57, 0x74, 0xa8,
-        0x17, 0x4f,
-    ];
-    // 12KzhL2G5oWLyeFciHKowDgedsLtqXhTzR2Njx4Ksb5DWjkA
-    const ESCROW: [u8; 32] = [
-        0x3a, 0xb8, 0xde, 0xd6, 0x41, 0x30, 0x3c, 0x10, 0x51, 0x18, 0x47, 0xfd, 0xa7, 0x1d, 0x85,
-        0x50, 0xda, 0xbd, 0x85, 0x5b, 0xd6, 0xe, 0x78, 0x9c, 0xac, 0xa0, 0x7f, 0x12, 0x1f, 0xbf,
-        0x92, 0x49,
-    ];
-    const TOTAL: [u8; 32] = [
-        0x05, 0x6f, 0xac, 0xa2, 0xf8, 0x5a, 0x10, 0xbb, 0x2f, 0xdd, 0xce, 0x63, 0x83, 0xc9, 0x60,
-        0x98, 0x2d, 0x22, 0xd1, 0xbd, 0x46, 0x2e, 0x66, 0x10, 0x94, 0xa2, 0xb8, 0x57, 0x74, 0xa8,
-        0x17, 0x4b,
-    ];
 
     /* ----------------------------------------------------*
      * Event                                               *
@@ -422,9 +406,9 @@ mod submoloch {
             );
             ensure!(applicant != AccountId::default(), "applicant cannot be 0");
             ensure!(
-                applicant != AccountId::from(GUILD)
-                    && applicant != AccountId::from(ESCROW)
-                    && applicant != AccountId::from(TOTAL),
+                applicant != AccountId::from(constant::GUILD)
+                    && applicant != AccountId::from(constant::ESCROW)
+                    && applicant != AccountId::from(constant::TOTAL),
                 "applicant address cannot be reserved"
             );
             ensure!(
@@ -437,7 +421,7 @@ mod submoloch {
             if tribute_offered > 0
                 && *self
                     .user_token_balances
-                    .get(&(AccountId::from(GUILD), tribute_token))
+                    .get(&(AccountId::from(constant::GUILD), tribute_token))
                     .unwrap_or(&0)
                     == 0
             {
@@ -469,7 +453,7 @@ mod submoloch {
                 }
             }
 
-            self.unsafe_add_to_balance(AccountId::from(ESCROW), tribute_token, tribute_offered);
+            self.unsafe_add_to_balance(AccountId::from(constant::ESCROW), tribute_token, tribute_offered);
 
             self._submit_proposal(
                 Some(applicant),
@@ -615,7 +599,7 @@ mod submoloch {
                 token.transfer_from(caller, self.env().account_id(), self.proposal_deposit).is_ok(),
                 "proposal deposit token transfer failed"
             );
-            self.unsafe_add_to_balance(AccountId::from(ESCROW), deposit_token, self.proposal_deposit);
+            self.unsafe_add_to_balance(AccountId::from(constant::ESCROW), deposit_token, self.proposal_deposit);
 
             // compute startingPeriod for proposal
             let last_starting_period =
@@ -811,7 +795,7 @@ mod submoloch {
                 .and_modify(|old_value| *old_value += amount)
                 .or_insert(amount);
             self.user_token_balances
-                .entry((AccountId::from(TOTAL), token))
+                .entry((AccountId::from(constant::TOTAL), token))
                 .and_modify(|old_value| *old_value += amount)
                 .or_insert(amount);
         }
