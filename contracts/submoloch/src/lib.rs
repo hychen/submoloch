@@ -276,7 +276,7 @@ mod submoloch {
             // NOTE: move event up here, avoid stack too deep if too many approved tokens
             instance.env().emit_event(SummonComplete {
                 summoner,
-                // @FIXME: this caues event decoding failed on js.
+                // @FIXME: this causes event decoding failed on js.
                 //                tokens: approved_tokens,
                 summoning_time: instance.summoning_time,
                 period_duration,
@@ -443,12 +443,12 @@ mod submoloch {
             if r.is_err() {
                 match r.err().unwrap() {
                     erc20::Error::InsufficientAllowance => {
-                        ink_env::debug_println("Erc20 Transfer fail - InsufficentAllowance");
-                        return Err(String::from("InsufficentAllowance"));
+                        ink_env::debug_println("Erc20 Transfer fail - InsufficientAllowance");
+                        return Err(String::from("InsufficientAllowance"));
                     }
                     erc20::Error::InsufficientBalance => {
-                        ink_env::debug_println("Erc20 Transfer fail - InsufficentBalance.");
-                        return Err(String::from("InsufficentBalance"));
+                        ink_env::debug_println("Erc20 Transfer fail - InsufficientBalance.");
+                        return Err(String::from("InsufficientBalance"));
                     }
                 }
             }
