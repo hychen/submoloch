@@ -152,7 +152,7 @@ describe('Submoloch', () => {
   const firstProposalIndex = 0;
   const secondProposalIndex = 1;
   const thirdProposalIndex = 2;
-  const invalidPropsalIndex = 123;
+  const invalidProposalIndex = 123;
 
   const yes = 1;
   const no = 2;
