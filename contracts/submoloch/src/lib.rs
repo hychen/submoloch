@@ -15,6 +15,16 @@ macro_rules! ensure {
     }};
 }
 
+mod utils {
+    pub fn max(a: u128, b: u128) -> u128 {
+        if a > b {
+            a
+        } else {
+            b
+        }
+    }
+}
+
 /// Define ink! contract.
 #[ink::contract]
 mod submoloch {
@@ -26,6 +36,7 @@ mod submoloch {
     use crate::constant;
     use crate::member::{Member, Members};
     use crate::proposal::{Proposal, ProposalId, ProposalIndex, ProposalQueue, Proposals};
+    use crate::utils;
     use erc20::Erc20;
 
     const GUILD: [u8; 32] = [
@@ -171,7 +182,7 @@ mod submoloch {
     }
 
     /// Defines the storage of this contract.
-    #[cfg(not(feature = "ink-as-dependency"))]
+    /// #[cfg(not(feature = "ink-as-dependency"))]
     #[derive(Default)]
     #[ink(storage)]
     pub struct Submoloch {
@@ -595,8 +606,107 @@ mod submoloch {
 
         /// Defines a RPC call to sponsor a proposal.
         #[ink(message)]
-        pub fn sponsor_proposal(&self, _proposal_id: ProposalId) -> bool {
-            unimplemented!()
+        pub fn sponsor_proposal(&mut self, proposal_id: ProposalId) -> Result<(), String> {
+            let caller = self.env().caller();
+            // collect proposal deposit from sponsor and store it in the Moloch until the proposal is processed
+            let deposit_token = self.deposit_token();
+            let mut token: Erc20 = Erc20::from_account_id(deposit_token);
+            ensure!(
+                token.transfer_from(caller, self.env().account_id(), self.proposal_deposit).is_ok(),
+                "proposal deposit token transfer failed"
+            );
+            self.unsafe_add_to_balance(AccountId::from(ESCROW), deposit_token, self.proposal_deposit);
+
+            // compute startingPeriod for proposal
+            let last_starting_period =
+                self.proposal_queue
+                    .last()
+                    .copied()
+                    .map_or(0, |last_proposal_id| {
+                        self.proposals
+                            .get(&last_proposal_id)
+                            .copied()
+                            .map_or(0, |proposal| proposal.starting_period)
+                    });
+            let current_period = self.get_current_period() as u128;
+            let starting_period = utils::max(current_period, last_starting_period) + 1;
+
+            let maybe_proposal: Option<&mut Proposal> = self.proposals.get_mut(&proposal_id);
+            match maybe_proposal {
+                Some(proposal) => {
+                    let tribute_token = proposal
+                        .tribute_token
+                        .expect("proposal has no tribute token.");
+
+                    let applicant = proposal.applicant.expect("proposal has no applicant");
+
+                    let member = self
+                        .members
+                        .get(&applicant)
+                        .expect("proposal has no member");
+
+                    ensure!(
+                        proposal.proposer != AccountId::default(),
+                        "proposal must have been proposed"
+                    );
+                    ensure!(!proposal.flags[0], "proposal has already been sponsored");
+                    ensure!(!proposal.flags[3], "proposal has been cancelled");
+                    ensure!(member.jailed == 0, "proposal applicant must not be jailed");
+
+                    // whitelist proposal
+                    if proposal.flags[4] {
+                        ensure!(
+                            !*self.token_whitelist.get(&tribute_token).unwrap_or(&false),
+                            "cannot already have whitelisted the token"
+                        );
+                        ensure!(
+                            !self
+                                .proposed_to_whitelist
+                                .get(&tribute_token)
+                                .unwrap_or(&false),
+                            "already proposed to whitelist"
+                        );
+                        ensure!(
+                            (self.approved_tokens.len() as u128)
+                                < constant::MAX_TOKEN_WHITELIST_COUNT,
+                            "cannot sponsor more whitelist proposals"
+                        );
+                        self.proposed_to_whitelist.insert(tribute_token, true);
+
+                        // guild kick proposal
+                    } else if proposal.flags[5] {
+                        ensure!(
+                            !*self.proposed_to_kick.get(&applicant).unwrap_or(&false),
+                            "already proposed to kick"
+                        );
+                        self.proposed_to_kick.insert(applicant, true);
+                    }
+
+                    proposal.starting_period = starting_period;
+
+                    let member_address: AccountId = *self
+                        .member_address_by_delegate_key
+                        .get(&caller)
+                        .expect("delegate key not found");
+                    proposal.sponsor = Some(member_address);
+
+                    proposal.flags[0] = true; // sponsored
+
+                    // append proposal to the queue
+                    self.proposal_queue.push(proposal_id);
+
+                    self.env().emit_event(SponsorProposal {
+                        delegate_key: caller,
+                        member_address,
+                        proposal_id,
+                        proposal_index: (self.proposal_queue.len() - 1) as u128,
+                        starting_period,
+                    });
+
+                    Ok(())
+                }
+                None => Err(String::from("proposal not found")),
+            }
         }
 
         /// Defines a RPC call to checking voting period.
