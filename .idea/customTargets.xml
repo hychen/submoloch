@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CLionExternalBuildManager">
+    <target id="4275f0a2-9601-4226-ae8f-81f3c9488adc" name="Redspot" defaultType="TOOL">
+      <configuration id="07f42603-c4bd-48ca-9434-c062e95fa04a" name="Redspot" toolchainName="Default">
+        <build type="TOOL">
+          <tool actionId="Tool_External Tools_Redspot Compile" />
+        </build>
+        <clean type="TOOL">
+          <tool actionId="Tool_External Tools_Redspot Clean" />
+        </clean>
+      </configuration>
+    </target>
+  </component>
+</project>
